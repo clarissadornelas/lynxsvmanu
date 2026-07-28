@@ -10,6 +10,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { useActiveContext } from '@/stores/useActiveContext'
 import { AGENT_BY_KEY, formatBRL } from '@/lib/constants'
 import { CheckoutModal } from '@/components/central-agentes/CheckoutModal'
+import { CockpitResumo } from '@/components/home/CockpitResumo'
 
 interface AgentConfig {
   ativo: boolean | null
@@ -116,11 +117,10 @@ export default function Index() {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      <CockpitResumo />
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-          Meus Agentes de Recrutamento
-        </h1>
-        <p className="text-slate-500 mt-1">Escolha qual agente você deseja usar</p>
+        <h2 className="text-lg font-semibold tracking-tight text-slate-900">Meus agentes</h2>
+        <p className="text-sm text-slate-500 mt-0.5">Escolha qual agente você deseja usar</p>
       </div>
 
       <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
