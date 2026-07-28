@@ -212,7 +212,7 @@ export default function Layout() {
         )}
       >
         <div className="h-16 flex items-center px-6 border-b border-[#3D2E52] justify-between">
-          <div className="flex items-center gap-2 text-primary font-bold text-xl">
+          <div className="flex items-center gap-2 text-white font-bold text-xl">
             <div className="w-8 h-8 rounded-lg bg-agente-copiloto text-[#04342C] font-semibold flex items-center justify-center text-sm">
               L
             </div>
@@ -244,7 +244,7 @@ export default function Layout() {
               <LayoutDashboard
                 className={cn(
                   'w-5 h-5',
-                  location.pathname === '/' ? 'text-white' : 'text-slate-400',
+                  location.pathname === '/' ? 'text-white' : 'text-[#8E82A3]',
                 )}
               />
               Dashboard
@@ -263,7 +263,7 @@ export default function Layout() {
               <LayoutGrid
                 className={cn(
                   'w-5 h-5',
-                  location.pathname === '/painel' ? 'text-white' : 'text-slate-400',
+                  location.pathname === '/painel' ? 'text-white' : 'text-[#8E82A3]',
                 )}
               />
               Painel Unificado
@@ -282,7 +282,7 @@ export default function Layout() {
               <BarChart3
                 className={cn(
                   'w-5 h-5',
-                  location.pathname.startsWith('/relatorios') ? 'text-white' : 'text-slate-400',
+                  location.pathname.startsWith('/relatorios') ? 'text-white' : 'text-[#8E82A3]',
                 )}
               />
               Relatórios
@@ -308,7 +308,7 @@ export default function Layout() {
                       location.pathname.startsWith('/agenda') ||
                       location.pathname.startsWith('/agente-01')
                       ? 'text-white'
-                      : 'text-slate-400',
+                      : 'text-[#8E82A3]',
                   )}
                 />
                 Meu Assessor
@@ -333,7 +333,7 @@ export default function Layout() {
                     location.pathname.startsWith('/entrevistas') ||
                       location.pathname.startsWith('/agente-02')
                       ? 'text-white'
-                      : 'text-slate-400',
+                      : 'text-[#8E82A3]',
                   )}
                 />
                 Copiloto
@@ -358,7 +358,7 @@ export default function Layout() {
                     location.pathname.startsWith('/candidatos') ||
                       location.pathname.startsWith('/agente-03')
                       ? 'text-white'
-                      : 'text-slate-400',
+                      : 'text-[#8E82A3]',
                   )}
                 />
                 Base Ativa
@@ -378,7 +378,7 @@ export default function Layout() {
               <MessageSquare
                 className={cn(
                   'w-5 h-5',
-                  location.pathname.startsWith('/conversas') ? 'text-white' : 'text-slate-400',
+                  location.pathname.startsWith('/conversas') ? 'text-white' : 'text-[#8E82A3]',
                 )}
               />
               Conversas
@@ -399,7 +399,7 @@ export default function Layout() {
                   'w-5 h-5',
                   location.pathname.startsWith('/agentes/central')
                     ? 'text-white'
-                    : 'text-slate-400',
+                    : 'text-[#8E82A3]',
                 )}
               />
               Central de Agentes
@@ -410,23 +410,23 @@ export default function Layout() {
           <Link
             to="/contas"
             onClick={isMobile ? closeSidebar : undefined}
-            className="mx-1 mb-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 transition-colors hover:bg-slate-100"
+            className="mx-1 mb-2 flex items-center gap-2 rounded-lg border border-[#4A3A6B] bg-[#372A50] px-3 py-2 transition-colors hover:bg-[#4A3A6B]"
           >
             <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-700 truncate">
+              <p className="text-sm font-medium text-white truncate">
                 {contextTenantName || 'Sem tenant'}
               </p>
               {activeTenantId && !activeUsuarioId ? (
                 <Link
                   to="/contas"
                   onClick={isMobile ? closeSidebar : undefined}
-                  className="text-xs text-indigo-600 hover:text-indigo-700"
+                  className="text-xs text-agente-assessor hover:text-white"
                 >
                   escolher usuário →
                 </Link>
               ) : (
-                <p className="text-xs text-slate-400 truncate">
+                <p className="text-xs text-[#8E82A3] truncate">
                   {contextUserName || 'sem usuário'}
                 </p>
               )}
@@ -452,7 +452,7 @@ export default function Layout() {
               <Building2
                 className={cn(
                   'w-5 h-5',
-                  location.pathname.startsWith('/contas') ? 'text-white' : 'text-slate-400',
+                  location.pathname.startsWith('/contas') ? 'text-white' : 'text-[#8E82A3]',
                 )}
               />
               Minhas empresas
@@ -470,7 +470,7 @@ export default function Layout() {
               <Plus
                 className={cn(
                   'w-5 h-5',
-                  location.pathname.startsWith('/criar-empresa') ? 'text-white' : 'text-slate-400',
+                  location.pathname.startsWith('/criar-empresa') ? 'text-white' : 'text-[#8E82A3]',
                 )}
               />
               Criar empresa
@@ -489,7 +489,7 @@ export default function Layout() {
                 <Users
                   className={cn(
                     'w-5 h-5',
-                    location.pathname.startsWith('/membros') ? 'text-white' : 'text-slate-400',
+                    location.pathname.startsWith('/membros') ? 'text-white' : 'text-[#8E82A3]',
                   )}
                 />
                 Membros
@@ -508,7 +508,7 @@ export default function Layout() {
               <CreditCard
                 className={cn(
                   'w-5 h-5',
-                  location.pathname.startsWith('/plano-cobranca') ? 'text-white' : 'text-slate-400',
+                  location.pathname.startsWith('/plano-cobranca') ? 'text-white' : 'text-[#8E82A3]',
                 )}
               />
               Plano & Cobrança
@@ -516,7 +516,7 @@ export default function Layout() {
             <Link
               to="/configuracoes"
               onClick={isMobile ? closeSidebar : undefined}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-[#C4BAD2] hover:bg-[#3D2E52] hover:text-white transition-colors"
             >
               <Settings className="w-5 h-5 text-slate-400" /> Configurações
             </Link>
@@ -540,7 +540,7 @@ export default function Layout() {
               <Database
                 className={cn(
                   'w-5 h-5',
-                  location.pathname.startsWith('/revisao-dados') ? 'text-white' : 'text-slate-400',
+                  location.pathname.startsWith('/revisao-dados') ? 'text-white' : 'text-[#8E82A3]',
                 )}
               />
               Inspeção
@@ -558,7 +558,7 @@ export default function Layout() {
               <FileText
                 className={cn(
                   'w-5 h-5',
-                  location.pathname.startsWith('/teste-cv') ? 'text-white' : 'text-slate-400',
+                  location.pathname.startsWith('/teste-cv') ? 'text-white' : 'text-[#8E82A3]',
                 )}
               />
               Testes AI
@@ -576,7 +576,7 @@ export default function Layout() {
               <HelpCircle
                 className={cn(
                   'w-5 h-5',
-                  location.pathname.startsWith('/ajuda') ? 'text-white' : 'text-slate-400',
+                  location.pathname.startsWith('/ajuda') ? 'text-white' : 'text-[#8E82A3]',
                 )}
               />
               Central de Ajuda
@@ -594,7 +594,7 @@ export default function Layout() {
               <MessageSquare
                 className={cn(
                   'w-5 h-5',
-                  location.pathname.startsWith('/contato') ? 'text-white' : 'text-slate-400',
+                  location.pathname.startsWith('/contato') ? 'text-white' : 'text-[#8E82A3]',
                 )}
               />
               Contato
