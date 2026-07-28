@@ -203,7 +203,7 @@ export default function Layout() {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out flex flex-col',
+          'fixed inset-y-0 left-0 z-50 w-64 bg-[#2B1F3D] border-r border-[#3D2E52] transform transition-transform duration-300 ease-in-out flex flex-col',
           isMobile
             ? isSidebarOpen
               ? 'translate-x-0'
@@ -211,9 +211,9 @@ export default function Layout() {
             : 'translate-x-0 relative',
         )}
       >
-        <div className="h-16 flex items-center px-6 border-b border-slate-200 justify-between">
+        <div className="h-16 flex items-center px-6 border-b border-[#3D2E52] justify-between">
           <div className="flex items-center gap-2 text-primary font-bold text-xl">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm">
+            <div className="w-8 h-8 rounded-lg bg-agente-copiloto text-[#04342C] font-semibold flex items-center justify-center text-sm">
               L
             </div>
             <span>Lynxs</span>
@@ -228,7 +228,7 @@ export default function Layout() {
         <nav className="flex-1 py-6 px-4 space-y-8 overflow-y-auto">
           {/* Meus Agentes */}
           <div className="space-y-1">
-            <div className="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+            <div className="px-3 text-xs font-semibold text-[#8E82A3] uppercase tracking-wider mb-2">
               Meus Agentes
             </div>
             <Link
@@ -237,14 +237,14 @@ export default function Layout() {
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                 location.pathname === '/'
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                  ? 'bg-[#4A3A6B] text-white'
+                  : 'text-[#C4BAD2] hover:bg-[#3D2E52] hover:text-white',
               )}
             >
               <LayoutDashboard
                 className={cn(
                   'w-5 h-5',
-                  location.pathname === '/' ? 'text-indigo-700' : 'text-slate-400',
+                  location.pathname === '/' ? 'text-white' : 'text-slate-400',
                 )}
               />
               Dashboard
@@ -256,14 +256,14 @@ export default function Layout() {
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                 location.pathname === '/painel'
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                  ? 'bg-[#4A3A6B] text-white'
+                  : 'text-[#C4BAD2] hover:bg-[#3D2E52] hover:text-white',
               )}
             >
               <LayoutGrid
                 className={cn(
                   'w-5 h-5',
-                  location.pathname === '/painel' ? 'text-indigo-700' : 'text-slate-400',
+                  location.pathname === '/painel' ? 'text-white' : 'text-slate-400',
                 )}
               />
               Painel Unificado
@@ -275,16 +275,14 @@ export default function Layout() {
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                 location.pathname.startsWith('/relatorios')
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                  ? 'bg-[#4A3A6B] text-white'
+                  : 'text-[#C4BAD2] hover:bg-[#3D2E52] hover:text-white',
               )}
             >
               <BarChart3
                 className={cn(
                   'w-5 h-5',
-                  location.pathname.startsWith('/relatorios')
-                    ? 'text-indigo-700'
-                    : 'text-slate-400',
+                  location.pathname.startsWith('/relatorios') ? 'text-white' : 'text-slate-400',
                 )}
               />
               Relatórios
@@ -299,8 +297,8 @@ export default function Layout() {
                   location.pathname.startsWith('/vagas') ||
                     location.pathname.startsWith('/agenda') ||
                     location.pathname.startsWith('/agente-01')
-                    ? 'bg-indigo-50 text-indigo-700'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                    ? 'bg-[#4A3A6B] text-white'
+                    : 'text-[#C4BAD2] hover:bg-[#3D2E52] hover:text-white',
                 )}
               >
                 <ClipboardList
@@ -309,7 +307,7 @@ export default function Layout() {
                     location.pathname.startsWith('/vagas') ||
                       location.pathname.startsWith('/agenda') ||
                       location.pathname.startsWith('/agente-01')
-                      ? 'text-indigo-700'
+                      ? 'text-white'
                       : 'text-slate-400',
                   )}
                 />
@@ -325,8 +323,8 @@ export default function Layout() {
                   'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                   location.pathname.startsWith('/entrevistas') ||
                     location.pathname.startsWith('/agente-02')
-                    ? 'bg-indigo-50 text-indigo-700'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                    ? 'bg-[#4A3A6B] text-white'
+                    : 'text-[#C4BAD2] hover:bg-[#3D2E52] hover:text-white',
                 )}
               >
                 <Mic
@@ -334,7 +332,7 @@ export default function Layout() {
                     'w-5 h-5',
                     location.pathname.startsWith('/entrevistas') ||
                       location.pathname.startsWith('/agente-02')
-                      ? 'text-indigo-700'
+                      ? 'text-white'
                       : 'text-slate-400',
                   )}
                 />
@@ -350,8 +348,8 @@ export default function Layout() {
                   'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                   location.pathname.startsWith('/candidatos') ||
                     location.pathname.startsWith('/agente-03')
-                    ? 'bg-indigo-50 text-indigo-700'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                    ? 'bg-[#4A3A6B] text-white'
+                    : 'text-[#C4BAD2] hover:bg-[#3D2E52] hover:text-white',
                 )}
               >
                 <Target
@@ -359,7 +357,7 @@ export default function Layout() {
                     'w-5 h-5',
                     location.pathname.startsWith('/candidatos') ||
                       location.pathname.startsWith('/agente-03')
-                      ? 'text-indigo-700'
+                      ? 'text-white'
                       : 'text-slate-400',
                   )}
                 />
@@ -373,14 +371,14 @@ export default function Layout() {
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                 location.pathname.startsWith('/conversas')
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                  ? 'bg-[#4A3A6B] text-white'
+                  : 'text-[#C4BAD2] hover:bg-[#3D2E52] hover:text-white',
               )}
             >
               <MessageSquare
                 className={cn(
                   'w-5 h-5',
-                  location.pathname.startsWith('/conversas') ? 'text-indigo-700' : 'text-slate-400',
+                  location.pathname.startsWith('/conversas') ? 'text-white' : 'text-slate-400',
                 )}
               />
               Conversas
@@ -392,15 +390,15 @@ export default function Layout() {
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                 location.pathname.startsWith('/agentes/central')
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                  ? 'bg-[#4A3A6B] text-white'
+                  : 'text-[#C4BAD2] hover:bg-[#3D2E52] hover:text-white',
               )}
             >
               <Activity
                 className={cn(
                   'w-5 h-5',
                   location.pathname.startsWith('/agentes/central')
-                    ? 'text-indigo-700'
+                    ? 'text-white'
                     : 'text-slate-400',
                 )}
               />
@@ -438,7 +436,7 @@ export default function Layout() {
 
           {/* Minha Conta */}
           <div className="space-y-1">
-            <div className="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+            <div className="px-3 text-xs font-semibold text-[#8E82A3] uppercase tracking-wider mb-2">
               Minha Conta
             </div>
             <Link
@@ -447,14 +445,14 @@ export default function Layout() {
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                 location.pathname.startsWith('/contas')
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                  ? 'bg-[#4A3A6B] text-white'
+                  : 'text-[#C4BAD2] hover:bg-[#3D2E52] hover:text-white',
               )}
             >
               <Building2
                 className={cn(
                   'w-5 h-5',
-                  location.pathname.startsWith('/contas') ? 'text-indigo-700' : 'text-slate-400',
+                  location.pathname.startsWith('/contas') ? 'text-white' : 'text-slate-400',
                 )}
               />
               Minhas empresas
@@ -465,16 +463,14 @@ export default function Layout() {
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                 location.pathname.startsWith('/criar-empresa')
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                  ? 'bg-[#4A3A6B] text-white'
+                  : 'text-[#C4BAD2] hover:bg-[#3D2E52] hover:text-white',
               )}
             >
               <Plus
                 className={cn(
                   'w-5 h-5',
-                  location.pathname.startsWith('/criar-empresa')
-                    ? 'text-indigo-700'
-                    : 'text-slate-400',
+                  location.pathname.startsWith('/criar-empresa') ? 'text-white' : 'text-slate-400',
                 )}
               />
               Criar empresa
@@ -486,14 +482,14 @@ export default function Layout() {
                 className={cn(
                   'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                   location.pathname.startsWith('/membros')
-                    ? 'bg-indigo-50 text-indigo-700'
-                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                    ? 'bg-[#4A3A6B] text-white'
+                    : 'text-[#C4BAD2] hover:bg-[#3D2E52] hover:text-white',
                 )}
               >
                 <Users
                   className={cn(
                     'w-5 h-5',
-                    location.pathname.startsWith('/membros') ? 'text-indigo-700' : 'text-slate-400',
+                    location.pathname.startsWith('/membros') ? 'text-white' : 'text-slate-400',
                   )}
                 />
                 Membros
@@ -505,16 +501,14 @@ export default function Layout() {
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                 location.pathname.startsWith('/plano-cobranca')
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                  ? 'bg-[#4A3A6B] text-white'
+                  : 'text-[#C4BAD2] hover:bg-[#3D2E52] hover:text-white',
               )}
             >
               <CreditCard
                 className={cn(
                   'w-5 h-5',
-                  location.pathname.startsWith('/plano-cobranca')
-                    ? 'text-indigo-700'
-                    : 'text-slate-400',
+                  location.pathname.startsWith('/plano-cobranca') ? 'text-white' : 'text-slate-400',
                 )}
               />
               Plano & Cobrança
@@ -530,7 +524,7 @@ export default function Layout() {
 
           {/* Suporte */}
           <div className="space-y-1">
-            <div className="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+            <div className="px-3 text-xs font-semibold text-[#8E82A3] uppercase tracking-wider mb-2">
               Suporte
             </div>
             <Link
@@ -539,16 +533,14 @@ export default function Layout() {
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                 location.pathname.startsWith('/revisao-dados')
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                  ? 'bg-[#4A3A6B] text-white'
+                  : 'text-[#C4BAD2] hover:bg-[#3D2E52] hover:text-white',
               )}
             >
               <Database
                 className={cn(
                   'w-5 h-5',
-                  location.pathname.startsWith('/revisao-dados')
-                    ? 'text-indigo-700'
-                    : 'text-slate-400',
+                  location.pathname.startsWith('/revisao-dados') ? 'text-white' : 'text-slate-400',
                 )}
               />
               Inspeção
@@ -559,14 +551,14 @@ export default function Layout() {
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                 location.pathname.startsWith('/teste-cv')
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                  ? 'bg-[#4A3A6B] text-white'
+                  : 'text-[#C4BAD2] hover:bg-[#3D2E52] hover:text-white',
               )}
             >
               <FileText
                 className={cn(
                   'w-5 h-5',
-                  location.pathname.startsWith('/teste-cv') ? 'text-indigo-700' : 'text-slate-400',
+                  location.pathname.startsWith('/teste-cv') ? 'text-white' : 'text-slate-400',
                 )}
               />
               Testes AI
@@ -577,14 +569,14 @@ export default function Layout() {
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                 location.pathname.startsWith('/ajuda')
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                  ? 'bg-[#4A3A6B] text-white'
+                  : 'text-[#C4BAD2] hover:bg-[#3D2E52] hover:text-white',
               )}
             >
               <HelpCircle
                 className={cn(
                   'w-5 h-5',
-                  location.pathname.startsWith('/ajuda') ? 'text-indigo-700' : 'text-slate-400',
+                  location.pathname.startsWith('/ajuda') ? 'text-white' : 'text-slate-400',
                 )}
               />
               Central de Ajuda
@@ -595,14 +587,14 @@ export default function Layout() {
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
                 location.pathname.startsWith('/contato')
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
+                  ? 'bg-[#4A3A6B] text-white'
+                  : 'text-[#C4BAD2] hover:bg-[#3D2E52] hover:text-white',
               )}
             >
               <MessageSquare
                 className={cn(
                   'w-5 h-5',
-                  location.pathname.startsWith('/contato') ? 'text-indigo-700' : 'text-slate-400',
+                  location.pathname.startsWith('/contato') ? 'text-white' : 'text-slate-400',
                 )}
               />
               Contato
