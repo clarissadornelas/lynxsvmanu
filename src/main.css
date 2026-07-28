@@ -15,7 +15,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 243 75% 59%; /* Indigo 600 */
+    --primary: 276 33% 18%; /* Plum do Chrome */
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -32,15 +32,21 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 243 75% 59%;
+    --ring: 276 33% 18%;
 
-    --radius: 0.75rem; /* rounded-xl */
+    --radius: 0.625rem; /* rounded-xl */
 
     /* Custom App Colors */
     --success: 160 84% 39%; /* Emerald 600 */
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%; /* Amber 500 */
+    --warning: 32 100% 48%; /* Amber 500 */
     --warning-foreground: 0 0% 100%;
+    --agente-assessor: 197 86% 58%;
+    --agente-assessor-forte: 206 82% 35%;
+    --agente-copiloto: 154 60% 45%;
+    --agente-copiloto-forte: 165 100% 24%;
+    --agente-base-ativa: 43 84% 55%;
+    --agente-base-ativa-forte: 41 100% 27%;
   }
 
   .dark {
@@ -53,7 +59,7 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 243 75% 59%;
+    --primary: 276 25% 32%;
     --primary-foreground: 222.2 47.4% 11.2%;
 
     --secondary: 217.2 32.6% 17.5%;
@@ -70,7 +76,7 @@
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 243 75% 59%;
+    --ring: 276 25% 32%;
   }
 }
 

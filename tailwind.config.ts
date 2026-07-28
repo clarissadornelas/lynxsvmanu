@@ -63,6 +63,14 @@ const config = {
           DEFAULT: 'hsl(var(--warning))',
           foreground: 'hsl(var(--warning-foreground))',
         },
+        agente: {
+          assessor: 'hsl(var(--agente-assessor))',
+          'assessor-forte': 'hsl(var(--agente-assessor-forte))',
+          copiloto: 'hsl(var(--agente-copiloto))',
+          'copiloto-forte': 'hsl(var(--agente-copiloto-forte))',
+          'base-ativa': 'hsl(var(--agente-base-ativa))',
+          'base-ativa-forte': 'hsl(var(--agente-base-ativa-forte))',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',
