@@ -24,9 +24,9 @@ const AGENT_LABELS: Record<string, string> = {
 }
 
 const AGENT_DOT_COLORS: Record<string, string> = {
-  assessor: 'bg-emerald-500',
-  copiloto: 'bg-violet-500',
-  base_ativa: 'bg-amber-500',
+  assessor: 'bg-agente-assessor',
+  copiloto: 'bg-agente-copiloto',
+  base_ativa: 'bg-agente-base-ativa',
 }
 
 function getGreeting(): string {
@@ -134,25 +134,25 @@ export function CockpitResumo() {
       label: 'Em processo',
       icon: ClipboardList,
       value: metrics.emProcesso,
-      barColor: 'bg-emerald-500',
-      iconColor: 'text-emerald-600',
-      iconBg: 'bg-emerald-50',
+      barColor: 'bg-agente-assessor',
+      iconColor: 'text-agente-assessor-forte',
+      iconBg: 'bg-agente-assessor/10',
     },
     {
       label: 'Entrevistas',
       icon: Mic,
       value: metrics.entrevistas7d,
-      barColor: 'bg-violet-500',
-      iconColor: 'text-violet-600',
-      iconBg: 'bg-violet-50',
+      barColor: 'bg-agente-copiloto',
+      iconColor: 'text-agente-copiloto-forte',
+      iconBg: 'bg-agente-copiloto/10',
     },
     {
       label: 'Base de talentos',
       icon: Target,
       value: metrics.baseAtiva,
-      barColor: 'bg-amber-500',
-      iconColor: 'text-amber-600',
-      iconBg: 'bg-amber-50',
+      barColor: 'bg-agente-base-ativa',
+      iconColor: 'text-agente-base-ativa-forte',
+      iconBg: 'bg-agente-base-ativa/10',
     },
   ]
 
