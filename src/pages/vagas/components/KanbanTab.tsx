@@ -1,0 +1,465 @@
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { format, addDays, startOfWeek } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Calendar, Clock, Settings2, CalendarPlus, Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
+import { supabase } from '@/lib/supabase/client'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { JobAvailabilitySection } from '@/components/job-availability/JobAvailabilitySection'
+import { getAvailabilityStatus } from '@/lib/job-availability-status'
+import { getBusySlots } from '@/lib/agenda/getBusySlots'
+import { generateWeekSlots, type GeneratedSlot } from '@/lib/agenda/slot-generator'
+import { parseJanela } from '@/components/job-availability/types'
+import { FUNNEL_PHASES, phaseCount } from '@/lib/funnel-phases'
+import useRecruitmentStore, { Candidate, CandidateStatus } from '@/stores/useRecruitmentStore'
+import type { Json } from '@/lib/supabase/types'
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { getInitials } from '@/lib/avatar-utils'
+
+const COLUMNS = FUNNEL_PHASES.map((p) => ({
+  id: p.id as CandidateStatus,
+  label: p.label,
+  color: p.badgeClass,
+}))
+
+interface KanbanTabProps {
+  candidates: Candidate[]
+  jobId: string
+  jobJanela?: Json | null
+  jobDataLimite?: string | null
+  jobMaxAgendamentos?: number
+}
+
+export default function KanbanTab({
+  candidates,
+  jobId,
+  jobJanela,
+  jobDataLimite,
+  jobMaxAgendamentos,
+}: KanbanTabProps) {
+  const { updateCandidateStatus, updateJobInStore, reload, jobs } = useRecruitmentStore()
+  const [draggedId, setDraggedId] = useState<string | null>(null)
+  const [availabilityOpen, setAvailabilityOpen] = useState(false)
+  const [localJanela, setLocalJanela] = useState<Json | null>(jobJanela ?? null)
+  const [localDataLimite, setLocalDataLimite] = useState<string | null>(jobDataLimite ?? null)
+  const [localMaxAgendamentos, setLocalMaxAgendamentos] = useState<number>(jobMaxAgendamentos ?? 3)
+  const [schedulingCandidate, setSchedulingCandidate] = useState<Candidate | null>(null)
+  const [availableSlots, setAvailableSlots] = useState<GeneratedSlot[]>([])
+  const [selectedSlot, setSelectedSlot] = useState<GeneratedSlot | null>(null)
+  const [loadingSlots, setLoadingSlots] = useState(false)
+  const [booking, setBooking] = useState(false)
+
+  const availability = getAvailabilityStatus(localJanela, localDataLimite)
+  const jobTitle = jobs.find((j) => j.id === jobId)?.title || ''
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedId(id)
+    e.dataTransfer.setData('text/plain', id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+  }
+
+  const openSchedulingModal = async (candidate: Candidate) => {
+    setSchedulingCandidate(candidate)
+    setSelectedSlot(null)
+    setAvailableSlots([])
+    setLoadingSlots(true)
+
+    const ws = startOfWeek(new Date(), { weekStartsOn: 1 })
+    const days = Array.from({ length: 28 }).map((_, i) => addDays(ws, i))
+    const busySlots = await getBusySlots(days[0], addDays(days[27], 1))
+
+    const { data: agendData } = await supabase
+      .from('agendamentos')
+      .select('agendada_para')
+      .eq('vaga_id', jobId)
+      .in('status', ['agendada', 'confirmada'])
+      .gte('agendada_para', days[0].toISOString())
+      .lt('agendada_para', addDays(days[27], 1).toISOString())
+
+    const dailyCounts: Record<string, number> = {}
+    for (const a of agendData || []) {
+      const dayStr = format(new Date(a.agendada_para), 'yyyy-MM-dd')
+      dailyCounts[dayStr] = (dailyCounts[dayStr] || 0) + 1
+    }
+
+    const weekSlots = generateWeekSlots(
+      days,
+      localJanela,
+      localDataLimite,
+      localMaxAgendamentos,
+      busySlots,
+      dailyCounts,
+    )
+    const now = new Date()
+    const freeSlots = weekSlots
+      .flat()
+      .filter((s) => !s.busy && !s.dayLimit && !s.expired && s.date > now)
+    setAvailableSlots(freeSlots.slice(0, 20))
+    setLoadingSlots(false)
+  }
+
+  const handleConfirmScheduling = async () => {
+    if (!schedulingCandidate || !selectedSlot) return
+    setBooking(true)
+    try {
+      const agendadaPara = selectedSlot.date.toISOString()
+      const prevStatus = schedulingCandidate.status
+      const duracaoMin = parseJanela(localJanela).duracao_min
+
+      const { data: apt, error: aptErr } = await supabase
+        .from('agendamentos')
+        .insert({
+          candidato_id: schedulingCandidate.id,
+          vaga_id: jobId,
+          tenant_id: schedulingCandidate.tenantId,
+          agendada_para: agendadaPara,
+          duracao: duracaoMin,
+          status: 'agendada',
+          etapa: 1,
+        })
+        .select('id')
+        .single()
+      if (aptErr) throw aptErr
+
+      const { error: updErr } = await supabase
+        .from('candidatos')
+        .update({ status: 'agendado' })
+        .eq('id', schedulingCandidate.id)
+      if (updErr) throw updErr
+
+      const { error: evtErr } = await supabase.from('candidato_eventos').insert({
+        candidato_id: schedulingCandidate.id,
+        vaga_id: jobId,
+        tenant_id: schedulingCandidate.tenantId,
+        tipo: 'mudanca_fase',
+        de: prevStatus,
+        para: 'agendado',
+        agente: 'assessor',
+        ator: 'kanban_agendamento_manual',
+        payload: { agendamento_id: apt.id, agendada_para: agendadaPara },
+      })
+      if (evtErr) throw evtErr
+
+      toast.success('Agendamento criado com sucesso!')
+      await reload()
+      setSchedulingCandidate(null)
+      setSelectedSlot(null)
+    } catch (err) {
+      console.error(err)
+      toast.error('Erro ao agendar. Tente novamente.')
+    } finally {
+      setBooking(false)
+    }
+  }
+
+  const handleDrop = async (e: React.DragEvent, status: CandidateStatus) => {
+    e.preventDefault()
+    const id = e.dataTransfer.getData('text/plain') || draggedId
+    setDraggedId(null)
+    if (!id) return
+
+    const candidate = candidates.find((c) => c.id === id)
+    if (!candidate || candidate.status === status) return
+
+    if (status === 'agendado') {
+      const { data: existing } = await supabase
+        .from('agendamentos')
+        .select('id')
+        .eq('candidato_id', id)
+        .eq('vaga_id', jobId)
+        .in('status', ['agendada', 'confirmada'])
+
+      if (!existing || existing.length === 0) {
+        toast.error('Para mover para Agendado, escolha um horário primeiro.')
+        openSchedulingModal(candidate)
+        return
+      }
+    }
+
+    updateCandidateStatus(id, status)
+  }
+
+  const handleAvailabilitySaved = (updated: {
+    janela: Json | null
+    maxAgendamentos: number
+    dataLimite: string | null
+  }) => {
+    setLocalJanela(updated.janela)
+    setLocalDataLimite(updated.dataLimite)
+    setLocalMaxAgendamentos(updated.maxAgendamentos)
+    updateJobInStore(jobId, {
+      janela: updated.janela,
+      maxAgendamentos: updated.maxAgendamentos,
+      dataLimite: updated.dataLimite,
+    })
+    setAvailabilityOpen(false)
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center gap-3 px-1 pb-3 flex-wrap">
+        <Badge variant="secondary" className={cn('text-xs gap-1', availability.badgeClass)}>
+          <Clock className="w-3 h-3" />
+          {availability.label}
+        </Badge>
+        <div className="flex items-center gap-1.5">
+          {FUNNEL_PHASES.map((phase) => {
+            const count = phaseCount(candidates, phase.id)
+            return (
+              <Tooltip key={phase.id}>
+                <TooltipTrigger asChild>
+                  <div
+                    className={cn(
+                      'flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium',
+                      phase.badgeClass,
+                      count === 0 && 'opacity-40',
+                    )}
+                  >
+                    <span className={cn('w-1.5 h-1.5 rounded-full', phase.dotClass)} />
+                    {count}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent className="text-xs">{phase.label}</TooltipContent>
+              </Tooltip>
+            )
+          })}
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 text-xs gap-1"
+          onClick={() => setAvailabilityOpen(true)}
+        >
+          <Settings2 className="w-3.5 h-3.5" />
+          Configurar disponibilidade
+        </Button>
+        <Button size="sm" variant="outline" className="h-8 text-xs gap-1" asChild>
+          <Link to={`/agenda?vaga=${jobId}`}>
+            <Calendar className="w-3.5 h-3.5" />
+            Abrir agenda da vaga
+          </Link>
+        </Button>
+      </div>
+
+      <div className="h-full flex gap-4 pb-4 px-1 min-w-max">
+        {COLUMNS.map((col) => (
+          <div
+            key={col.id}
+            className="w-80 flex flex-col bg-slate-100/50 rounded-xl border border-slate-200/60 overflow-hidden shrink-0"
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, col.id)}
+          >
+            <div className="p-3 border-b border-slate-200 bg-white/50 flex justify-between items-center">
+              <h3 className="font-medium text-sm text-slate-700">{col.label}</h3>
+              <Badge variant="secondary" className={cn('text-xs', col.color)}>
+                {candidates.filter((c) => c.status === col.id).length}
+              </Badge>
+            </div>
+
+            <div className="flex-1 p-2 space-y-2 overflow-y-auto">
+              {candidates
+                .filter((c) => c.status === col.id)
+                .map((c) => (
+                  <div
+                    key={c.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, c.id)}
+                    onDragEnd={() => setDraggedId(null)}
+                    className={cn(
+                      'bg-white p-3 rounded-lg shadow-sm border border-slate-200 cursor-grab hover:border-indigo-300 drag-tilt',
+                      draggedId === c.id ? 'opacity-50' : 'opacity-100',
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      <Avatar className="w-10 h-10 shrink-0">
+                        <AvatarImage src={c.avatarUrl || undefined} alt={c.name} />
+                        <AvatarFallback className="text-xs">{getInitials(c.name)}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex justify-between items-start">
+                          <Link
+                            to={`/candidatos/${c.id}`}
+                            className="font-medium text-sm text-slate-900 truncate hover:text-indigo-600 hover:underline"
+                          >
+                            {c.name}
+                          </Link>
+                          <span
+                            className={cn(
+                              'text-xs font-bold px-1.5 rounded',
+                              c.score.total >= 90
+                                ? 'text-emerald-700 bg-emerald-50'
+                                : 'text-amber-700 bg-amber-50',
+                            )}
+                          >
+                            {c.score.total}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 truncate mt-0.5">{c.email}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between">
+                      {c.status === 'agendado' ? (
+                        <div className="text-xs flex items-center text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                          <Calendar className="w-3 h-3 mr-1" />
+                          Sincronizado c/ Agenda
+                        </div>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openSchedulingModal(c)
+                          }}
+                          className="text-xs flex items-center text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+                        >
+                          <CalendarPlus className="w-3 h-3 mr-1" />
+                          Agendar
+                        </button>
+                      )}
+                      <Link
+                        to={`/agenda?vaga=${jobId}&candidato=${c.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-xs text-slate-400 hover:text-blue-600 transition-colors flex items-center gap-1"
+                      >
+                        <Calendar className="w-3 h-3" />
+                        Ver agenda
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Sheet open={availabilityOpen} onOpenChange={setAvailabilityOpen}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Disponibilidade da Vaga</SheetTitle>
+            <SheetDescription className="sr-only">
+              Configurar janelas de horário e disponibilidade
+            </SheetDescription>
+          </SheetHeader>
+          <div className="px-4 pb-6 pt-4">
+            {jobMaxAgendamentos !== undefined && (
+              <JobAvailabilitySection
+                jobId={jobId}
+                initialJanela={localJanela}
+                initialMaxAgendamentos={localMaxAgendamentos}
+                initialDataLimite={localDataLimite}
+                onSaved={handleAvailabilitySaved}
+              />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Dialog
+        open={!!schedulingCandidate}
+        onOpenChange={(open) => {
+          if (!open) setSchedulingCandidate(null)
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Agendar Entrevista</DialogTitle>
+            <DialogDescription>
+              {schedulingCandidate?.name} · {jobTitle}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2">
+            {loadingSlots ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
+              </div>
+            ) : availableSlots.length === 0 ? (
+              <div className="text-center py-8 px-4">
+                <p className="text-sm text-slate-500 mb-3">
+                  Esta vaga ainda não tem horários disponíveis. Configure a disponibilidade ou abra
+                  a Agenda.
+                </p>
+                <Button size="sm" variant="outline" asChild>
+                  <Link to={`/agenda?vaga=${jobId}`}>Abrir Agenda</Link>
+                </Button>
+              </div>
+            ) : (
+              <ScrollArea className="h-[280px] rounded-md border border-slate-200">
+                <div className="divide-y divide-slate-100">
+                  {availableSlots.map((slot, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedSlot(slot)}
+                      className={cn(
+                        'w-full flex items-center justify-between px-3 py-2.5 transition-colors text-left',
+                        selectedSlot === slot ? 'bg-blue-50' : 'hover:bg-slate-50',
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-slate-400" />
+                        <span className="text-sm font-medium text-slate-800 capitalize">
+                          {format(slot.date, "d 'de' MMMM", { locale: ptBR })}
+                        </span>
+                        <span className="text-xs text-slate-400 capitalize">
+                          {format(slot.date, 'EEE', { locale: ptBR })}
+                        </span>
+                      </div>
+                      <span className="text-sm font-semibold text-blue-600">{slot.time}</span>
+                    </button>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+          </div>
+
+          {availableSlots.length > 0 && (
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSchedulingCandidate(null)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleConfirmScheduling}
+                disabled={booking || !selectedSlot}
+                className="bg-[#457B9D] hover:bg-[#3a6a88]"
+              >
+                {booking ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Agendando...
+                  </>
+                ) : (
+                  'Confirmar agendamento'
+                )}
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}

@@ -1,0 +1,8 @@
+{
+  "imports": {
+    "pdf-parse": "npm:pdf-parse@1.1.1",
+    "mammoth": "npm:mammoth@1.8.0",
+    "openai": "npm:openai@4.52.0",
+    "libphonenumber-js": "npm:libphonenumber-js@1.11.4"
+  }
+}
