@@ -67,7 +67,7 @@ export function UpcomingInterviewsPanel({ agendamentos, candidatos, vagas, entre
   return (
     <Card className="border-slate-200">
       <div className="p-4 border-b border-slate-100 flex items-center gap-2">
-        <CalendarDays className="w-4 h-4 text-indigo-600" />
+        <CalendarDays className="w-4 h-4 text-primary" />
         <h2 className="font-semibold text-slate-900">Próximas Entrevistas</h2>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -91,7 +91,7 @@ export function UpcomingInterviewsPanel({ agendamentos, candidatos, vagas, entre
                 item.entrevistaId ? 'cursor-pointer' : 'cursor-default',
               )}
             >
-              <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-lg bg-plum-tenue flex items-center justify-center shrink-0">
                 <Clock className="w-4 h-4 text-indigo-600" />
               </div>
               <div className="flex-1 min-w-0">

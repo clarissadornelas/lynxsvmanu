@@ -81,7 +81,7 @@ export default function CandidateRoom() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -120,9 +120,9 @@ export default function CandidateRoom() {
   if (!consentimento) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <Card className="max-w-lg w-full border-indigo-100 shadow-xl">
+        <Card className="max-w-lg w-full border-plum-suave shadow-xl">
           <CardHeader className="text-center pb-2">
-            <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-plum-suave rounded-full flex items-center justify-center mx-auto mb-4">
               <ShieldCheck className="w-8 h-8 text-indigo-600" />
             </div>
             <CardTitle className="text-2xl font-bold text-slate-900">
@@ -130,7 +130,7 @@ export default function CandidateRoom() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6 text-slate-600">
-            <div className="bg-indigo-50/50 p-5 rounded-xl text-sm space-y-3 border border-indigo-100/50 text-indigo-900 leading-relaxed text-center font-medium">
+            <div className="bg-plum-tenue/50 p-5 rounded-xl text-sm space-y-3 border border-indigo-100/50 text-primary leading-relaxed text-center font-medium">
               Esta entrevista será gravada para fins de análise e melhoria do processo seletivo.
               Seus dados serão tratados de acordo com a LGPD. Ao continuar, você concorda com a
               gravação e análise de dados.
@@ -146,7 +146,7 @@ export default function CandidateRoom() {
               </Button>
               <Button
                 size="lg"
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-md transition-all"
+                className="w-full bg-primary hover:bg-primary text-white shadow-md transition-all"
                 onClick={aceitarLGPD}
               >
                 Concordo

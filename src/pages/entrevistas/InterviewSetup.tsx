@@ -211,7 +211,7 @@ export default function InterviewSetup() {
   if (loading) {
     return (
       <div className="p-8 flex justify-center">
-        <Loader2 className="animate-spin text-indigo-600" />
+        <Loader2 className="animate-spin text-primary" />
       </div>
     )
   }
@@ -261,7 +261,7 @@ export default function InterviewSetup() {
                         <span className="text-xs font-medium text-slate-500">
                           {formatShortDate(a.agendada_para)}
                         </span>
-                        <span className="text-sm font-bold text-indigo-700">
+                        <span className="text-sm font-bold text-primary">
                           {formatTime(a.agendada_para)}
                         </span>
                       </div>
@@ -346,7 +346,7 @@ export default function InterviewSetup() {
                     className={cn(
                       'cursor-pointer transition-all',
                       isSelected
-                        ? 'border-indigo-400 ring-2 ring-indigo-100'
+                        ? 'border-primary ring-2 ring-indigo-100'
                         : 'border-slate-200 hover:border-slate-300',
                     )}
                   >
@@ -462,7 +462,7 @@ export default function InterviewSetup() {
                           className={cn(
                             'flex items-center gap-3 p-3 hover:bg-slate-50 transition-colors',
                             preselectedCandidatoId === cand.id &&
-                              'bg-indigo-50 ring-1 ring-indigo-200',
+                              'bg-plum-tenue ring-1 ring-indigo-200',
                           )}
                         >
                           <span className="text-sm font-bold text-slate-400 w-6 text-center shrink-0">

@@ -870,8 +870,8 @@ export default function BancadeEntrevista() {
     return (
       <div className="max-w-2xl mx-auto py-12 space-y-8 animate-fade-in-up">
         <div className="text-center space-y-2">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-100 flex items-center justify-center mx-auto">
-            <Video className="w-8 h-8 text-indigo-600" />
+          <div className="w-16 h-16 rounded-2xl bg-plum-suave flex items-center justify-center mx-auto">
+            <Video className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-3xl font-bold tracking-tight">Bancada de Entrevista</h1>
           <p className="text-slate-500">Ambiente de testes — dry-run sem persistência</p>
@@ -983,7 +983,7 @@ export default function BancadeEntrevista() {
       <div className="max-w-xl mx-auto py-12">
         <Card>
           <CardContent className="p-8 text-center space-y-4">
-            <Loader2 className="w-10 h-10 text-indigo-500 mx-auto animate-spin" />
+            <Loader2 className="w-10 h-10 text-primary mx-auto animate-spin" />
             <p className="text-lg font-medium text-slate-700">Preparando a sala…</p>
             <p className="text-sm text-slate-500">
               Aguarde enquanto registramos a sala de entrevista.

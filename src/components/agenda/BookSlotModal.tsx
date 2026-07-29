@@ -44,7 +44,7 @@ function statusBadgeClass(status: string): string {
     shortlist: 'bg-teal-100 text-teal-700 border-teal-200',
     agendado: 'bg-blue-100 text-blue-700 border-blue-200',
     em_teste: 'bg-violet-100 text-violet-700 border-violet-200',
-    entrevistado: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+    entrevistado: 'bg-plum-suave text-primary border-plum-borda',
     contratado: 'bg-amber-100 text-amber-700 border-amber-200',
     descartado: 'bg-slate-100 text-slate-700 border-slate-200',
     reprovado: 'bg-red-100 text-red-700 border-red-200',

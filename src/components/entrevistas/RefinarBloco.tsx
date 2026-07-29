@@ -47,7 +47,7 @@ export function RefinarBloco({ shortcutChips, onRefine }: RefinarBlocoProps) {
         variant="ghost"
         size="sm"
         onClick={() => setExpanded(true)}
-        className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+        className="text-primary hover:text-primary hover:bg-plum-tenue"
       >
         <Wand2 className="w-4 h-4 mr-1.5" />
         Refinar
@@ -56,9 +56,9 @@ export function RefinarBloco({ shortcutChips, onRefine }: RefinarBlocoProps) {
   }
 
   return (
-    <div className="w-full mt-3 rounded-lg border border-indigo-200 bg-indigo-50/50 p-3 space-y-3 animate-fade-in">
+    <div className="w-full mt-3 rounded-lg border border-plum-borda bg-indigo-50/50 p-3 space-y-3 animate-fade-in">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-indigo-900 flex items-center gap-1.5">
+        <span className="text-sm font-medium text-primary flex items-center gap-1.5">
           <Wand2 className="w-4 h-4" /> Refinar com instruções
         </span>
         <Button
@@ -81,7 +81,7 @@ export function RefinarBloco({ shortcutChips, onRefine }: RefinarBlocoProps) {
             disabled={loading}
             className={cn(
               'rounded-full border border-indigo-200 bg-white px-3 py-1 text-xs font-medium text-indigo-700 transition-colors',
-              'hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50',
+              'hover:bg-plum-suave disabled:cursor-not-allowed disabled:opacity-50',
             )}
           >
             {chip}
@@ -113,7 +113,7 @@ export function RefinarBloco({ shortcutChips, onRefine }: RefinarBlocoProps) {
         </Button>
         <Button
           size="sm"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white"
+          className="bg-primary hover:bg-primary text-white"
           onClick={handleRefine}
           disabled={loading || !instrucoes.trim()}
         >

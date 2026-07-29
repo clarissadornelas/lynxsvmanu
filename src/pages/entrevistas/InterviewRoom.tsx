@@ -510,7 +510,7 @@ export default function InterviewRoom() {
   if (loading) {
     return (
       <div className="p-8 flex justify-center">
-        <Loader2 className="animate-spin text-indigo-600" />
+        <Loader2 className="animate-spin text-primary" />
       </div>
     )
   }
@@ -543,7 +543,7 @@ export default function InterviewRoom() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-12">
       <PageHeader title="Sala de Entrevista" subtitle={`${candidato?.nome} • ${vaga?.titulo}`}>
-        <Badge className="bg-indigo-100 text-indigo-700">
+        <Badge className="bg-plum-suave text-primary">
           {entrevista.status.replace('_', ' ').toUpperCase()}
         </Badge>
       </PageHeader>
@@ -577,7 +577,7 @@ export default function InterviewRoom() {
             </Badge>
             <Badge
               variant="outline"
-              className="bg-indigo-100 text-indigo-700 border-indigo-200 text-xs"
+              className="bg-indigo-100 text-indigo-700 border-plum-borda text-xs"
             >
               Kanban: Entrevistado
             </Badge>
@@ -596,7 +596,7 @@ export default function InterviewRoom() {
             </p>
             <Button
               size="lg"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              className="bg-primary hover:bg-primary text-white"
               onClick={gerarPrep}
               disabled={generating}
             >
@@ -632,7 +632,7 @@ export default function InterviewRoom() {
               </CardHeader>
               <CardContent className="p-6">
                 {briefing && (
-                  <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-4 mb-4">
+                  <div className="bg-plum-tenue border border-plum-suave rounded-lg p-4 mb-4">
                     <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider">
                       Briefing
                     </span>
@@ -896,7 +896,7 @@ export default function InterviewRoom() {
                     entrevista.transcricao.split('\n').map((line: string, i: number) => (
                       <div
                         key={i}
-                        className={`p-2 rounded ${line.includes('[Headhunter]') ? 'bg-indigo-50 text-indigo-900' : 'bg-slate-50 text-slate-800'}`}
+                        className={`p-2 rounded ${line.includes('[Headhunter]') ? 'bg-indigo-50 text-primary' : 'bg-slate-50 text-slate-800'}`}
                       >
                         {line}
                       </div>

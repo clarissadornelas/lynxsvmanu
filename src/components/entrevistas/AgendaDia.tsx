@@ -68,7 +68,7 @@ function getBadgeLabel(
 
   if (entrevista) {
     if (entrevista.status === 'roteiro_pronto') {
-      return { label: 'roteiro pronto', className: 'bg-indigo-100 text-indigo-700' }
+      return { label: 'roteiro pronto', className: 'bg-plum-suave text-primary' }
     }
     if (realizadaStatuses.includes(entrevista.status)) {
       return { label: 'realizada', className: 'bg-emerald-100 text-emerald-700' }
@@ -126,7 +126,7 @@ export function AgendaDia({ agendamentos, candidatos, vagas, entrevistas }: Agen
       <div className="p-4 border-b border-slate-100">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <CalendarDays className="w-4 h-4 text-indigo-600" />
+            <CalendarDays className="w-4 h-4 text-primary" />
             <h2 className="text-lg font-semibold text-slate-900">Agenda de Entrevistas</h2>
           </div>
           <div className="flex items-center gap-2">
@@ -166,7 +166,7 @@ export function AgendaDia({ agendamentos, candidatos, vagas, entrevistas }: Agen
                   key={a.id}
                   className="flex items-center gap-3 p-3 hover:bg-slate-50 transition-colors"
                 >
-                  <div className="w-14 h-12 rounded-lg bg-indigo-50 flex flex-col items-center justify-center shrink-0">
+                  <div className="w-14 h-12 rounded-lg bg-plum-tenue flex flex-col items-center justify-center shrink-0">
                     <span className="text-sm font-bold text-indigo-700">
                       {formatTime(a.agendada_para)}
                     </span>
