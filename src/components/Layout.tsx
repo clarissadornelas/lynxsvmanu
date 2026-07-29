@@ -517,10 +517,10 @@ export default function Layout() {
             </Link>
           </div>
 
-          {/* Suporte */}
+          {/* Sistema */}
           <div className="space-y-1">
             <div className="px-3 text-xs font-semibold text-[#8E82A3] uppercase tracking-wider mb-2">
-              Suporte
+              Sistema
             </div>
             <Link
               to="/revisao-dados"
@@ -558,6 +558,9 @@ export default function Layout() {
               />
               Testes AI
             </Link>
+            <div className="px-3 pt-4 text-xs font-semibold text-[#8E82A3] uppercase tracking-wider mb-2">
+              Suporte
+            </div>
             <Link
               to="/ajuda"
               onClick={isMobile ? closeSidebar : undefined}

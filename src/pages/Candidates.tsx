@@ -157,14 +157,6 @@ export default function Candidates() {
       } else if (newStatus === 'contratado') {
         toast.success('Status atualizado! Pipeline de onboarding (30/60/90 dias) ativado.')
       } else if (newStatus === 'reprovado' || newStatus === 'descartado') {
-        await supabase.functions.invoke('crm-automation', {
-          body: {
-            task: 'status_changed',
-            candidate_id: id,
-            tenant_id: tenantId,
-            new_status: newStatus,
-          },
-        })
         const { data: movedCand } = await supabase
           .from('candidatos')
           .select('nome, telefone, email, cargo, empresa')
