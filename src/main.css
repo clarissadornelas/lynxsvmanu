@@ -47,6 +47,11 @@
     --agente-copiloto-forte: 165 100% 24%;
     --agente-base-ativa: 43 84% 55%;
     --agente-base-ativa-forte: 41 100% 27%;
+
+    --plum-link: 260 30% 32%;
+    --plum-borda: 263 22% 74%;
+    --plum-suave: 268 30% 92%;
+    --plum-tenue: 270 30% 96%;
   }
 
   .dark {

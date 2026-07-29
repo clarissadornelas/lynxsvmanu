@@ -63,6 +63,12 @@ const config = {
           DEFAULT: 'hsl(var(--warning))',
           foreground: 'hsl(var(--warning-foreground))',
         },
+        plum: {
+          link: 'hsl(var(--plum-link))',
+          borda: 'hsl(var(--plum-borda))',
+          suave: 'hsl(var(--plum-suave))',
+          tenue: 'hsl(var(--plum-tenue))',
+        },
         agente: {
           assessor: 'hsl(var(--agente-assessor))',
           'assessor-forte': 'hsl(var(--agente-assessor-forte))',
