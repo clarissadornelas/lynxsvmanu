@@ -34,6 +34,11 @@ export interface Candidate {
   email: string
   phone: string
   status: CandidateStatus
+  situacao: 'ativo' | 'pausado' | 'eliminado'
+  situacaoEm: string | null
+  motivoSaida: string | null
+  faseSaida: string | null
+  etapaAtual: number
   score: Score
   avatarUrl: string | null
   matchReasons: string[]
@@ -132,6 +137,11 @@ function mapCandidate(row: CandidatoRow): Candidate {
     email: row.email || '',
     phone: row.telefone || '',
     status: mapDbStatus(row.status || 'novo'),
+    situacao: row.situacao === 'pausado' || row.situacao === 'eliminado' ? row.situacao : 'ativo',
+    situacaoEm: row.situacao_em ?? null,
+    motivoSaida: row.motivo_saida ?? null,
+    faseSaida: row.fase_saida ?? null,
+    etapaAtual: typeof row.etapa_atual === 'number' && row.etapa_atual > 0 ? row.etapa_atual : 1,
     score: { experiencia: score, tecnica: score, cultura: score, senioridade: score, total: score },
     avatarUrl: row.foto_url || null,
     matchReasons: row.score_obs ? [row.score_obs] : ['Análise automatizada pelo agente'],

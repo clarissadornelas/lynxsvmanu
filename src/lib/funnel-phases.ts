@@ -125,15 +125,16 @@ export function parseEtapas(raw: unknown): EtapaVaga[] {
 
 export function deriveKanbanColumn(
   status: string,
-  etapaAtual: number,
+  etapaAtual: number | null | undefined,
   totalRodadas: number,
 ): KanbanColumnId {
   if (status === 'contratado') return 'contratado'
   if (status === 'novo') return 'a_triar'
   if (status === 'shortlist') return 'longlist'
   if (status === 'agendado' || status === 'entrevistado') {
-    if (etapaAtual <= totalRodadas) return 'em_entrevista'
-    return 'shortlist_final'
+    const etapa = typeof etapaAtual === 'number' && etapaAtual > 0 ? etapaAtual : 1
+    if (totalRodadas > 0 && etapa > totalRodadas) return 'shortlist_final'
+    return 'em_entrevista'
   }
   return 'a_triar'
 }
