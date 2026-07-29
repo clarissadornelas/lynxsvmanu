@@ -57,6 +57,87 @@ export function phaseCount(candidates: Candidate[], id: FunnelPhase['id']): numb
   return candidates.filter((c) => c.status === id).length
 }
 
+export type KanbanColumnId =
+  | 'a_triar'
+  | 'longlist'
+  | 'em_entrevista'
+  | 'shortlist_final'
+  | 'contratado'
+
+export interface KanbanColumn {
+  id: KanbanColumnId
+  label: string
+  tooltip: string
+}
+
+export const KANBAN_COLUMNS: KanbanColumn[] = [
+  {
+    id: 'a_triar',
+    label: 'A Triar',
+    tooltip: 'Candidatos recém-chegados, aguardando triagem.',
+  },
+  {
+    id: 'longlist',
+    label: 'Longlist',
+    tooltip: 'Aprovados na triagem, elegíveis para contato.',
+  },
+  {
+    id: 'em_entrevista',
+    label: 'Em entrevista',
+    tooltip: 'Em alguma rodada de entrevista da vaga.',
+  },
+  {
+    id: 'shortlist_final',
+    label: 'Shortlist',
+    tooltip: 'Passaram por todas as rodadas. Finalistas a comparar.',
+  },
+  {
+    id: 'contratado',
+    label: 'Contratado',
+    tooltip: 'Fechou a vaga.',
+  },
+]
+
+export interface EtapaVaga {
+  n: number
+  nome: string
+  tipo: string
+  agenda_id: string | null
+  duracao: number
+}
+
+export function parseEtapas(raw: unknown): EtapaVaga[] {
+  if (!Array.isArray(raw)) return []
+  const parsed = raw
+    .filter((e): e is Record<string, unknown> => typeof e === 'object' && e !== null)
+    .map(
+      (e, i): EtapaVaga => ({
+        n: typeof e.n === 'number' ? e.n : i + 1,
+        nome: typeof e.nome === 'string' ? e.nome : `Rodada ${i + 1}`,
+        tipo: typeof e.tipo === 'string' ? e.tipo : 'rh',
+        agenda_id: e.agenda_id == null ? null : String(e.agenda_id),
+        duracao: typeof e.duracao === 'number' ? e.duracao : 60,
+      }),
+    )
+  parsed.sort((a, b) => a.n - b.n)
+  return parsed
+}
+
+export function deriveKanbanColumn(
+  status: string,
+  etapaAtual: number,
+  totalRodadas: number,
+): KanbanColumnId {
+  if (status === 'contratado') return 'contratado'
+  if (status === 'novo') return 'a_triar'
+  if (status === 'shortlist') return 'longlist'
+  if (status === 'agendado' || status === 'entrevistado') {
+    if (etapaAtual <= totalRodadas) return 'em_entrevista'
+    return 'shortlist_final'
+  }
+  return 'a_triar'
+}
+
 export interface CopilotStage {
   id: 'a_preparar' | 'pronta' | 'a_analisar' | 'analisada'
   label: string
