@@ -334,3 +334,52 @@ export function classesRodadaAntiga(
   const i = Math.floor(scaled)
   return presets[Math.min(i, presets.length - 1)]
 }
+
+export type MotivoSaida =
+  | 'nao_aprovado'
+  | 'desistiu'
+  | 'sem_retorno'
+  | 'recusou_proposta'
+  | 'finalista_nao_escolhido'
+  | 'vaga_encerrada'
+
+export interface OpcaoMotivoSaida {
+  valor: MotivoSaida
+  rotulo: string
+  explicacao: string
+}
+
+export const MOTIVOS_SAIDA_HUMANOS: OpcaoMotivoSaida[] = [
+  {
+    valor: 'nao_aprovado',
+    rotulo: 'Não aprovado',
+    explicacao: 'Decisão do recrutador ou do cliente.',
+  },
+  {
+    valor: 'desistiu',
+    rotulo: 'Desistiu',
+    explicacao: 'A pessoa saiu por conta própria. Alto valor para a Base Ativa.',
+  },
+  {
+    valor: 'recusou_proposta',
+    rotulo: 'Recusou proposta',
+    explicacao: 'Recebeu oferta e não aceitou. É métrica de negócio.',
+  },
+]
+
+const MOTIVO_SAIDA_LABELS: Record<MotivoSaida, string> = {
+  nao_aprovado: 'Não aprovado',
+  desistiu: 'Desistiu',
+  sem_retorno: 'Sem retorno',
+  recusou_proposta: 'Recusou proposta',
+  finalista_nao_escolhido: 'Finalista não escolhido',
+  vaga_encerrada: 'Vaga encerrada',
+}
+
+export function rotuloMotivoSaida(motivo: string | null | undefined): string {
+  if (!motivo) return '—'
+  if (motivo in MOTIVO_SAIDA_LABELS) {
+    return MOTIVO_SAIDA_LABELS[motivo as MotivoSaida]
+  }
+  return motivo.replace(/_/g, ' ')
+}

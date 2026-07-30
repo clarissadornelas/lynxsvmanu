@@ -2,23 +2,13 @@ import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Label } from '@/components/ui/label'
-import { Loader2 } from 'lucide-react'
-
-export type MotivoSaida =
-  | 'nao_aprovado'
-  | 'desistiu'
-  | 'sem_retorno'
-  | 'recusou_proposta'
-  | 'finalista_nao_escolhido'
-  | 'vaga_encerrada'
+import { MOTIVOS_SAIDA_HUMANOS, type MotivoSaida } from '@/lib/funnel-phases'
 
 interface SaidaProcessoModalProps {
   open: boolean
@@ -28,97 +18,73 @@ interface SaidaProcessoModalProps {
   onConfirmar: (motivo: MotivoSaida) => Promise<void>
 }
 
-interface OpcaoHumana {
-  valor: MotivoSaida
-  rotulo: string
-  explicacao: string
-}
+export type { MotivoSaida }
 
-const OPCOES_HUMANAS: OpcaoHumana[] = [
-  {
-    valor: 'nao_aprovado',
-    rotulo: 'Não aprovado',
-    explicacao: 'Decisão do recrutador ou do cliente.',
-  },
-  {
-    valor: 'desistiu',
-    rotulo: 'Desistiu',
-    explicacao: 'A pessoa saiu por conta própria. Alto valor para a Base Ativa.',
-  },
-  {
-    valor: 'recusou_proposta',
-    rotulo: 'Recusou proposta',
-    explicacao: 'Recebeu oferta e não aceitou. É métrica de negócio.',
-  },
-]
-
-export function SaidaProcessoModal({
+export default function SaidaProcessoModal({
   open,
   onOpenChange,
   nomeCandidato,
   permiteRecusouProposta,
   onConfirmar,
 }: SaidaProcessoModalProps) {
-  const [motivo, setMotivo] = useState<MotivoSaida | ''>('')
+  const [motivo, setMotivo] = useState<MotivoSaida | null>(null)
   const [salvando, setSalvando] = useState(false)
 
   useEffect(() => {
     if (open) {
-      setMotivo('')
+      setMotivo(null)
       setSalvando(false)
     }
   }, [open])
 
-  const opcoesVisiveis = OPCOES_HUMANAS.filter(
-    (op) => op.valor !== 'recusou_proposta' || permiteRecusouProposta,
+  const opcoesVisiveis = MOTIVOS_SAIDA_HUMANOS.filter(
+    (opcao) => opcao.valor !== 'recusou_proposta' || permiteRecusouProposta,
   )
 
   const handleConfirmar = async () => {
-    if (!motivo) return
+    if (!motivo || salvando) return
     setSalvando(true)
-    await onConfirmar(motivo as MotivoSaida)
-    setSalvando(false)
-    onOpenChange(false)
+    try {
+      await onConfirmar(motivo)
+    } finally {
+      setSalvando(false)
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Tirar do processo</DialogTitle>
+          <DialogTitle>Tirar {nomeCandidato} do processo</DialogTitle>
           <DialogDescription>
-            Selecione o motivo da saída de <span className="font-semibold">{nomeCandidato}</span> do
-            processo seletivo.
+            O motivo é obrigatório. A pessoa continua visível no rodapé da fase onde saiu, e passa a
+            fazer parte da Base Ativa.
           </DialogDescription>
         </DialogHeader>
 
-        <RadioGroup
-          value={motivo}
-          onValueChange={(v) => setMotivo(v as MotivoSaida)}
-          className="gap-3"
-        >
+        <div className="py-4 space-y-2">
           {opcoesVisiveis.map((opcao) => (
-            <div
+            <button
               key={opcao.valor}
-              className="flex items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
+              type="button"
+              onClick={() => setMotivo(opcao.valor)}
+              className={`w-full text-left rounded-md border px-4 py-3 text-sm transition-colors ${
+                motivo === opcao.valor
+                  ? 'border-slate-900 bg-slate-50'
+                  : 'border-slate-200 hover:border-slate-400'
+              }`}
             >
-              <RadioGroupItem value={opcao.valor} id={opcao.valor} className="mt-1" />
-              <div className="flex-1">
-                <Label htmlFor={opcao.valor} className="cursor-pointer font-medium">
-                  {opcao.rotulo}
-                </Label>
-                <p className="text-sm text-muted-foreground">{opcao.explicacao}</p>
-              </div>
-            </div>
+              <span className="block text-sm font-medium text-slate-900">{opcao.rotulo}</span>
+              <span className="block text-xs text-slate-500 mt-0.5">{opcao.explicacao}</span>
+            </button>
           ))}
-        </RadioGroup>
+        </div>
 
-        <DialogFooter className="gap-2 sm:gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={salvando}>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={salvando}>
             Cancelar
           </Button>
           <Button onClick={handleConfirmar} disabled={!motivo || salvando}>
-            {salvando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {salvando ? 'Salvando...' : 'Tirar do processo'}
           </Button>
         </DialogFooter>

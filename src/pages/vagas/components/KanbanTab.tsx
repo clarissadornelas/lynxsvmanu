@@ -46,6 +46,7 @@ import useRecruitmentStore, { Candidate, CandidateStatus } from '@/stores/useRec
 import type { Json } from '@/lib/supabase/types'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { getInitials } from '@/lib/avatar-utils'
+import SaidaProcessoModal, { type MotivoSaida } from '@/components/kanban/SaidaProcessoModal'
 
 const COLUMNS = KANBAN_COLUMNS.map((c) => ({
   id: c.id,
@@ -80,6 +81,7 @@ export default function KanbanTab({
   const [selectedSlot, setSelectedSlot] = useState<GeneratedSlot | null>(null)
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [booking, setBooking] = useState(false)
+  const [saindoCandidato, setSaindoCandidato] = useState<Candidate | null>(null)
 
   const availability = getAvailabilityStatus(localJanela, localDataLimite)
   const currentJob = jobs.find((j) => j.id === jobId)
@@ -94,6 +96,84 @@ export default function KanbanTab({
 
   const eliminadosDaColuna = (colId: KanbanColumnId) =>
     candidates.filter((c) => c.situacao === 'eliminado' && colunaDoCandidato(c) === colId)
+
+  const confirmarSaida = async (motivo: MotivoSaida) => {
+    if (!saindoCandidato) return
+    const c = saindoCandidato
+
+    const { error: updErr } = await supabase
+      .from('candidatos')
+      .update({
+        situacao: 'eliminado',
+        motivo_saida: motivo,
+        fase_saida: c.status,
+        situacao_em: new Date().toISOString(),
+      })
+      .eq('id', c.id)
+
+    if (updErr) {
+      toast.error('Erro ao atualizar candidato. Tente novamente.')
+      return
+    }
+
+    const { data: candData } = await supabase
+      .from('candidatos')
+      .select('nome, telefone, email, cargo, tenant_id')
+      .eq('id', c.id)
+      .single()
+
+    if (candData?.telefone) {
+      const { data: existingBase } = await supabase
+        .from('base_ativa')
+        .select('id')
+        .eq('candidato_id', c.id)
+        .maybeSingle()
+
+      if (!existingBase) {
+        const { error: baseErr } = await supabase.from('base_ativa').insert({
+          candidato_id: c.id,
+          tenant_id: candData.tenant_id,
+          nome: candData.nome,
+          telefone: candData.telefone,
+          email: candData.email,
+          ultimo_cargo: candData.cargo,
+          origem: 'saida_processo',
+          status_profissional: 'indefinido',
+          abertura: 'indefinido',
+          consentimento: false,
+          opt_out: false,
+          lead_quente: false,
+          pings_enviados: 0,
+          cadencia_dias: 30,
+        })
+
+        if (baseErr) {
+          toast.warning(
+            'Candidato saiu do processo, mas não foi possível adicioná-lo à Base Ativa.',
+          )
+        }
+      }
+    }
+
+    const { error: evtErr } = await supabase.from('candidato_eventos').insert({
+      candidato_id: c.id,
+      vaga_id: jobId,
+      tenant_id: c.tenantId,
+      tipo: 'saida_processo',
+      de: c.status,
+      para: motivo,
+      agente: null,
+      ator: 'humano',
+    })
+
+    if (evtErr) {
+      console.error(evtErr)
+    }
+
+    toast.success('Candidato removido do processo.')
+    setSaindoCandidato(null)
+    await reload()
+  }
 
   const etapasDaVaga = parseEtapas(currentJob?.etapas)
 
@@ -467,7 +547,19 @@ export default function KanbanTab({
                               Agendar
                             </button>
                           )}
-                          <span />
+                          {c.situacao === 'eliminado' ? (
+                            <span />
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSaindoCandidato(c)
+                              }}
+                              className="text-xs text-slate-400 hover:text-red-600 transition-colors"
+                            >
+                              Tirar do processo
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}
@@ -483,6 +575,20 @@ export default function KanbanTab({
           </div>
         ))}
       </div>
+
+      <SaidaProcessoModal
+        open={saindoCandidato !== null}
+        onOpenChange={(open) => {
+          if (!open) setSaindoCandidato(null)
+        }}
+        nomeCandidato={saindoCandidato?.name ?? ''}
+        permiteRecusouProposta={
+          saindoCandidato !== null &&
+          (colunaDoCandidato(saindoCandidato) === 'entrevistados' ||
+            colunaDoCandidato(saindoCandidato) === 'shortlist_final')
+        }
+        onConfirmar={confirmarSaida}
+      />
 
       <Sheet open={availabilityOpen} onOpenChange={setAvailabilityOpen}>
         <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
