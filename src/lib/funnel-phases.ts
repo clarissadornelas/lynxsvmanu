@@ -265,3 +265,70 @@ export function deriveCopilotStage(
   }
   return 'a_preparar'
 }
+
+export interface GrupoRodada<T> {
+  n: number
+  nome: string
+  tipo: string
+  itens: T[]
+}
+
+export function agruparPorRodada<T extends { etapaAtual: number }>(
+  itens: T[],
+  etapas: EtapaVaga[],
+): GrupoRodada<T>[] {
+  if (!etapas || etapas.length === 0) {
+    return [{ n: 1, nome: 'Entrevista', tipo: 'rh', itens: [...itens] }]
+  }
+  return etapas.map((etapa) => ({
+    n: etapa.n,
+    nome: etapa.nome,
+    tipo: etapa.tipo,
+    itens: itens.filter((item) => {
+      const etapaAtual =
+        typeof item.etapaAtual === 'number' && item.etapaAtual > 0 ? item.etapaAtual : 1
+      return etapaAtual === etapa.n
+    }),
+  }))
+}
+
+export function recuoRodada(indice: number): number {
+  return indice * 14
+}
+
+export interface PassoRampa {
+  borda: string
+  fundo: string
+  texto: string
+}
+
+export const RAMPA_RODADA: PassoRampa[] = [
+  { borda: 'hsl(154 40% 78%)', fundo: 'hsl(154 40% 97%)', texto: 'hsl(165 60% 22%)' },
+  { borda: 'hsl(157 45% 62%)', fundo: 'hsl(157 42% 95%)', texto: 'hsl(165 60% 20%)' },
+  { borda: 'hsl(160 55% 44%)', fundo: 'hsl(160 45% 94%)', texto: 'hsl(165 65% 18%)' },
+  { borda: 'hsl(165 75% 28%)', fundo: 'hsl(165 40% 93%)', texto: 'hsl(165 70% 15%)' },
+]
+
+export function classesRodada(indice: number, total: number): PassoRampa {
+  if (total <= 1) return RAMPA_RODADA[0]
+  const ratio = Math.max(0, Math.min(1, indice / (total - 1)))
+  const scaled = ratio * (RAMPA_RODADA.length - 1)
+  const i = Math.floor(scaled)
+  return RAMPA_RODADA[Math.min(i, RAMPA_RODADA.length - 1)]
+}
+
+export function classesRodadaAntiga(
+  indice: number,
+  total: number,
+): { borda: string; fundo: string; texto: string } {
+  const presets = RAMPA_RODADA
+
+  if (total <= 1) {
+    return presets[0]
+  }
+
+  const ratio = Math.max(0, Math.min(1, indice / (total - 1)))
+  const scaled = ratio * (presets.length - 1)
+  const i = Math.floor(scaled)
+  return presets[Math.min(i, presets.length - 1)]
+}

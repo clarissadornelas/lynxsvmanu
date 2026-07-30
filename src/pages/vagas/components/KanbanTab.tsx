@@ -37,6 +37,9 @@ import {
   deriveKanbanColumn,
   parseEtapas,
   statusDaColuna,
+  agruparPorRodada,
+  recuoRodada,
+  classesRodada,
   type KanbanColumnId,
 } from '@/lib/funnel-phases'
 import useRecruitmentStore, { Candidate, CandidateStatus } from '@/stores/useRecruitmentStore'
@@ -87,6 +90,48 @@ export default function KanbanTab({
     candidates.filter(
       (c) => deriveKanbanColumn(c.status, c.etapaAtual, totalRodadas, c.shortlistOrdem) === colId,
     )
+
+  const etapasDaVaga = parseEtapas(currentJob?.etapas)
+
+  interface FaixaRodada {
+    n: number
+    nome: string
+    indice: number
+    vazia: boolean
+  }
+
+  interface ItemColuna {
+    faixa: FaixaRodada | null
+    candidato: Candidate | null
+  }
+
+  const itensDaColuna = (colId: KanbanColumnId): ItemColuna[] => {
+    const daColuna = candidatosDaColuna(colId)
+
+    if (colId !== 'em_entrevista') {
+      return daColuna.map((c) => ({ faixa: null, candidato: c }))
+    }
+
+    const grupos = agruparPorRodada(daColuna, etapasDaVaga)
+    const itens: ItemColuna[] = []
+
+    grupos.forEach((grupo, idx) => {
+      itens.push({
+        faixa: {
+          n: grupo.n,
+          nome: grupo.nome,
+          indice: idx,
+          vazia: grupo.itens.length === 0,
+        },
+        candidato: null,
+      })
+      grupo.itens.forEach((c) => {
+        itens.push({ faixa: null, candidato: c })
+      })
+    })
+
+    return itens
+  }
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
     setDraggedId(id)
@@ -303,74 +348,102 @@ export default function KanbanTab({
             </div>
 
             <div className="flex-1 p-2 space-y-2 overflow-y-auto">
-              {candidatosDaColuna(col.id).map((c) => (
-                <div
-                  key={c.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, c.id)}
-                  onDragEnd={() => setDraggedId(null)}
-                  className={cn(
-                    'bg-white p-3 rounded-lg shadow-sm border border-slate-200 cursor-grab hover:border-indigo-300 drag-tilt',
-                    draggedId === c.id ? 'opacity-50' : 'opacity-100',
-                  )}
-                >
-                  <div className="flex items-start gap-3">
-                    <Avatar className="w-10 h-10 shrink-0">
-                      <AvatarImage src={c.avatarUrl || undefined} alt={c.name} />
-                      <AvatarFallback className="text-xs">{getInitials(c.name)}</AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex justify-between items-start">
-                        <Link
-                          to={`/candidatos/${c.id}`}
-                          className="font-medium text-sm text-slate-900 truncate hover:text-indigo-600 hover:underline"
-                        >
-                          {c.name}
-                        </Link>
-                        <span
-                          className={cn(
-                            'text-xs font-bold px-1.5 rounded',
-                            c.score.total >= 90
-                              ? 'text-emerald-700 bg-emerald-50'
-                              : 'text-amber-700 bg-amber-50',
-                          )}
-                        >
-                          {c.score.total}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 truncate mt-0.5">{c.email}</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex items-center justify-between">
-                    {c.status === 'agendado' ? (
-                      <div className="text-xs flex items-center text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                        <Calendar className="w-3 h-3 mr-1" />
-                        Sincronizado c/ Agenda
-                      </div>
-                    ) : (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          openSchedulingModal(c)
+              {itensDaColuna(col.id).map((item) => {
+                const cores = item.faixa
+                  ? classesRodada(item.faixa.indice, etapasDaVaga.length)
+                  : null
+                const c = item.candidato!
+                return (
+                  <div key={item.faixa ? `faixa-${item.faixa.n}` : c.id}>
+                    {item.faixa && cores && (
+                      <div
+                        style={{
+                          marginLeft: recuoRodada(item.faixa.indice),
+                          borderLeft: `3px solid ${cores.borda}`,
+                          background: cores.fundo,
+                          color: cores.texto,
                         }}
-                        className="text-xs flex items-center text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium rounded mb-2"
                       >
-                        <CalendarPlus className="w-3 h-3 mr-1" />
-                        Agendar
-                      </button>
+                        {`F${item.faixa.n} ${item.faixa.nome}`}
+                        {item.faixa.vazia && (
+                          <span className="ml-2 text-[10px] opacity-60">vazia</span>
+                        )}
+                      </div>
                     )}
-                    <Link
-                      to={`/agenda?vaga=${jobId}&candidato=${c.id}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-xs text-slate-400 hover:text-blue-600 transition-colors flex items-center gap-1"
-                    >
-                      <Calendar className="w-3 h-3" />
-                      Ver agenda
-                    </Link>
+                    {c && (
+                      <div
+                        key={c.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, c.id)}
+                        onDragEnd={() => setDraggedId(null)}
+                        className={cn(
+                          'bg-white p-3 rounded-lg shadow-sm border border-slate-200 cursor-grab hover:border-indigo-300 drag-tilt',
+                          draggedId === c.id ? 'opacity-50' : 'opacity-100',
+                        )}
+                      >
+                        <div className="flex items-start gap-3">
+                          <Avatar className="w-10 h-10 shrink-0">
+                            <AvatarImage src={c.avatarUrl || undefined} alt={c.name} />
+                            <AvatarFallback className="text-xs">
+                              {getInitials(c.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex justify-between items-start">
+                              <Link
+                                to={`/candidatos/${c.id}`}
+                                className="font-medium text-sm text-slate-900 truncate hover:text-indigo-600 hover:underline"
+                              >
+                                {c.name}
+                              </Link>
+                              <span
+                                className={cn(
+                                  'text-xs font-bold px-1.5 rounded',
+                                  c.score.total >= 90
+                                    ? 'text-emerald-700 bg-emerald-50'
+                                    : 'text-amber-700 bg-amber-50',
+                                )}
+                              >
+                                {c.score.total}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500 truncate mt-0.5">{c.email}</p>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between">
+                          {c.status === 'agendado' ? (
+                            <div className="text-xs flex items-center text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                              <Calendar className="w-3 h-3 mr-1" />
+                              Sincronizado c/ Agenda
+                            </div>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                openSchedulingModal(c)
+                              }}
+                              className="text-xs flex items-center text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+                            >
+                              <CalendarPlus className="w-3 h-3 mr-1" />
+                              Agendar
+                            </button>
+                          )}
+                          <Link
+                            to={`/agenda?vaga=${jobId}&candidato=${c.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-xs text-slate-400 hover:text-blue-600 transition-colors flex items-center gap-1"
+                          >
+                            <Calendar className="w-3 h-3" />
+                            Ver agenda
+                          </Link>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         ))}
