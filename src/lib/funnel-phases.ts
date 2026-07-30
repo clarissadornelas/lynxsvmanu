@@ -61,6 +61,7 @@ export type KanbanColumnId =
   | 'a_triar'
   | 'longlist'
   | 'em_entrevista'
+  | 'entrevistados'
   | 'shortlist_final'
   | 'contratado'
 
@@ -87,9 +88,14 @@ export const KANBAN_COLUMNS: KanbanColumn[] = [
     tooltip: 'Em alguma rodada de entrevista da vaga.',
   },
   {
+    id: 'entrevistados',
+    label: 'Entrevistados',
+    tooltip: 'Completaram todas as rodadas da vaga. Aguardam escolha dos finalistas.',
+  },
+  {
     id: 'shortlist_final',
     label: 'Shortlist',
-    tooltip: 'Passaram por todas as rodadas. Finalistas a comparar.',
+    tooltip: 'Finalistas escolhidos entre os entrevistados. É aqui que se decide.',
   },
   {
     id: 'contratado',
@@ -127,16 +133,31 @@ export function deriveKanbanColumn(
   status: string,
   etapaAtual: number | null | undefined,
   totalRodadas: number,
+  shortlistOrdem?: number | null,
 ): KanbanColumnId {
   if (status === 'contratado') return 'contratado'
+  if (typeof shortlistOrdem === 'number' && shortlistOrdem >= 1) return 'shortlist_final'
   if (status === 'novo') return 'a_triar'
   if (status === 'shortlist') return 'longlist'
   if (status === 'agendado' || status === 'entrevistado') {
     const etapa = typeof etapaAtual === 'number' && etapaAtual > 0 ? etapaAtual : 1
-    if (totalRodadas > 0 && etapa > totalRodadas) return 'shortlist_final'
+    if (totalRodadas > 0 && etapa > totalRodadas) return 'entrevistados'
     return 'em_entrevista'
   }
   return 'a_triar'
+}
+
+export const COLUNA_PARA_STATUS: Record<KanbanColumnId, string | null> = {
+  a_triar: 'novo',
+  longlist: 'shortlist',
+  em_entrevista: 'agendado',
+  entrevistados: null,
+  shortlist_final: null,
+  contratado: 'contratado',
+}
+
+export function statusDaColuna(colId: KanbanColumnId): string | null {
+  return COLUNA_PARA_STATUS[colId] ?? null
 }
 
 export interface CopilotStage {

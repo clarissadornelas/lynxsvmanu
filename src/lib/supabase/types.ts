@@ -585,6 +585,7 @@ export type Database = {
           pdf_url: string | null
           score: number | null
           score_obs: string | null
+          shortlist_ordem: number | null
           situacao: string
           situacao_em: string
           status: string
@@ -617,6 +618,7 @@ export type Database = {
           pdf_url?: string | null
           score?: number | null
           score_obs?: string | null
+          shortlist_ordem?: number | null
           situacao?: string
           situacao_em?: string
           status?: string
@@ -649,6 +651,7 @@ export type Database = {
           pdf_url?: string | null
           score?: number | null
           score_obs?: string | null
+          shortlist_ordem?: number | null
           situacao?: string
           situacao_em?: string
           status?: string
@@ -735,6 +738,9 @@ export type Database = {
           mensagem_apresentacao: string | null
           modo: string
           nome_agente: string | null
+          perguntas_padrao: Json
+          prompt_disc: string | null
+          prompt_disc_versao: number
           tenant_id: string | null
           tom: string | null
           tom_detalhe: string | null
@@ -753,6 +759,9 @@ export type Database = {
           mensagem_apresentacao?: string | null
           modo?: string
           nome_agente?: string | null
+          perguntas_padrao?: Json
+          prompt_disc?: string | null
+          prompt_disc_versao?: number
           tenant_id?: string | null
           tom?: string | null
           tom_detalhe?: string | null
@@ -771,6 +780,9 @@ export type Database = {
           mensagem_apresentacao?: string | null
           modo?: string
           nome_agente?: string | null
+          perguntas_padrao?: Json
+          prompt_disc?: string | null
+          prompt_disc_versao?: number
           tenant_id?: string | null
           tom?: string | null
           tom_detalhe?: string | null
@@ -970,6 +982,9 @@ export type Database = {
       entrevistas: {
         Row: {
           agendamento_id: string | null
+          avaliacao: Json | null
+          avaliada_em: string | null
+          avaliador_id: string | null
           candidato_id: string
           criado_em: string
           disc: Json | null
@@ -988,6 +1003,9 @@ export type Database = {
         }
         Insert: {
           agendamento_id?: string | null
+          avaliacao?: Json | null
+          avaliada_em?: string | null
+          avaliador_id?: string | null
           candidato_id: string
           criado_em?: string
           disc?: Json | null
@@ -1006,6 +1024,9 @@ export type Database = {
         }
         Update: {
           agendamento_id?: string | null
+          avaliacao?: Json | null
+          avaliada_em?: string | null
+          avaliador_id?: string | null
           candidato_id?: string
           criado_em?: string
           disc?: Json | null

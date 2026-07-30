@@ -39,6 +39,7 @@ export interface Candidate {
   motivoSaida: string | null
   faseSaida: string | null
   etapaAtual: number
+  shortlistOrdem: number | null
   score: Score
   avatarUrl: string | null
   matchReasons: string[]
@@ -69,6 +70,7 @@ export interface Job {
   codigo: string | null
   agentes: string[]
   janela: Json | null
+  etapas: Json
   maxAgendamentos: number
   salarioMin: number | null
   salarioMax: number | null
@@ -119,6 +121,7 @@ function mapJob(row: VagaRow, tenantName: string): Job {
     codigo: row.codigo || null,
     agentes,
     janela: row.janela,
+    etapas: row.etapas,
     maxAgendamentos: row.max_agendamentos,
     salarioMin: row.salario_min ?? null,
     salarioMax: row.salario_max ?? null,
@@ -142,6 +145,7 @@ function mapCandidate(row: CandidatoRow): Candidate {
     motivoSaida: row.motivo_saida ?? null,
     faseSaida: row.fase_saida ?? null,
     etapaAtual: typeof row.etapa_atual === 'number' && row.etapa_atual > 0 ? row.etapa_atual : 1,
+    shortlistOrdem: typeof row.shortlist_ordem === 'number' ? row.shortlist_ordem : null,
     score: { experiencia: score, tecnica: score, cultura: score, senioridade: score, total: score },
     avatarUrl: row.foto_url || null,
     matchReasons: row.score_obs ? [row.score_obs] : ['Análise automatizada pelo agente'],

@@ -30,16 +30,25 @@ import { getAvailabilityStatus } from '@/lib/job-availability-status'
 import { getBusySlots } from '@/lib/agenda/getBusySlots'
 import { generateWeekSlots, type GeneratedSlot } from '@/lib/agenda/slot-generator'
 import { parseJanela } from '@/components/job-availability/types'
-import { FUNNEL_PHASES, phaseCount } from '@/lib/funnel-phases'
+import {
+  FUNNEL_PHASES,
+  phaseCount,
+  KANBAN_COLUMNS,
+  deriveKanbanColumn,
+  parseEtapas,
+  statusDaColuna,
+  type KanbanColumnId,
+} from '@/lib/funnel-phases'
 import useRecruitmentStore, { Candidate, CandidateStatus } from '@/stores/useRecruitmentStore'
 import type { Json } from '@/lib/supabase/types'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { getInitials } from '@/lib/avatar-utils'
 
-const COLUMNS = FUNNEL_PHASES.map((p) => ({
-  id: p.id as CandidateStatus,
-  label: p.label,
-  color: p.badgeClass,
+const COLUMNS = KANBAN_COLUMNS.map((c) => ({
+  id: c.id,
+  label: c.label,
+  tooltip: c.tooltip,
+  color: 'bg-slate-100 text-slate-600',
 }))
 
 interface KanbanTabProps {
@@ -70,7 +79,14 @@ export default function KanbanTab({
   const [booking, setBooking] = useState(false)
 
   const availability = getAvailabilityStatus(localJanela, localDataLimite)
-  const jobTitle = jobs.find((j) => j.id === jobId)?.title || ''
+  const currentJob = jobs.find((j) => j.id === jobId)
+  const jobTitle = currentJob?.title || ''
+  const totalRodadas = parseEtapas(currentJob?.etapas).length
+
+  const candidatosDaColuna = (colId: KanbanColumnId) =>
+    candidates.filter(
+      (c) => deriveKanbanColumn(c.status, c.etapaAtual, totalRodadas, c.shortlistOrdem) === colId,
+    )
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
     setDraggedId(id)
@@ -272,86 +288,89 @@ export default function KanbanTab({
             key={col.id}
             className="w-80 flex flex-col bg-slate-100/50 rounded-xl border border-slate-200/60 overflow-hidden shrink-0"
             onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, col.id)}
+            onDrop={(e) => {
+              const status = statusDaColuna(col.id)
+              if (status) handleDrop(e, status as CandidateStatus)
+            }}
           >
             <div className="p-3 border-b border-slate-200 bg-white/50 flex justify-between items-center">
-              <h3 className="font-medium text-sm text-slate-700">{col.label}</h3>
+              <h3 className="font-medium text-sm text-slate-700" title={col.tooltip}>
+                {col.label}
+              </h3>
               <Badge variant="secondary" className={cn('text-xs', col.color)}>
-                {candidates.filter((c) => c.status === col.id).length}
+                {candidatosDaColuna(col.id).length}
               </Badge>
             </div>
 
             <div className="flex-1 p-2 space-y-2 overflow-y-auto">
-              {candidates
-                .filter((c) => c.status === col.id)
-                .map((c) => (
-                  <div
-                    key={c.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, c.id)}
-                    onDragEnd={() => setDraggedId(null)}
-                    className={cn(
-                      'bg-white p-3 rounded-lg shadow-sm border border-slate-200 cursor-grab hover:border-indigo-300 drag-tilt',
-                      draggedId === c.id ? 'opacity-50' : 'opacity-100',
-                    )}
-                  >
-                    <div className="flex items-start gap-3">
-                      <Avatar className="w-10 h-10 shrink-0">
-                        <AvatarImage src={c.avatarUrl || undefined} alt={c.name} />
-                        <AvatarFallback className="text-xs">{getInitials(c.name)}</AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex justify-between items-start">
-                          <Link
-                            to={`/candidatos/${c.id}`}
-                            className="font-medium text-sm text-slate-900 truncate hover:text-indigo-600 hover:underline"
-                          >
-                            {c.name}
-                          </Link>
-                          <span
-                            className={cn(
-                              'text-xs font-bold px-1.5 rounded',
-                              c.score.total >= 90
-                                ? 'text-emerald-700 bg-emerald-50'
-                                : 'text-amber-700 bg-amber-50',
-                            )}
-                          >
-                            {c.score.total}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500 truncate mt-0.5">{c.email}</p>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-between">
-                      {c.status === 'agendado' ? (
-                        <div className="text-xs flex items-center text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                          <Calendar className="w-3 h-3 mr-1" />
-                          Sincronizado c/ Agenda
-                        </div>
-                      ) : (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openSchedulingModal(c)
-                          }}
-                          className="text-xs flex items-center text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+              {candidatosDaColuna(col.id).map((c) => (
+                <div
+                  key={c.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, c.id)}
+                  onDragEnd={() => setDraggedId(null)}
+                  className={cn(
+                    'bg-white p-3 rounded-lg shadow-sm border border-slate-200 cursor-grab hover:border-indigo-300 drag-tilt',
+                    draggedId === c.id ? 'opacity-50' : 'opacity-100',
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <Avatar className="w-10 h-10 shrink-0">
+                      <AvatarImage src={c.avatarUrl || undefined} alt={c.name} />
+                      <AvatarFallback className="text-xs">{getInitials(c.name)}</AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex justify-between items-start">
+                        <Link
+                          to={`/candidatos/${c.id}`}
+                          className="font-medium text-sm text-slate-900 truncate hover:text-indigo-600 hover:underline"
                         >
-                          <CalendarPlus className="w-3 h-3 mr-1" />
-                          Agendar
-                        </button>
-                      )}
-                      <Link
-                        to={`/agenda?vaga=${jobId}&candidato=${c.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-xs text-slate-400 hover:text-blue-600 transition-colors flex items-center gap-1"
-                      >
-                        <Calendar className="w-3 h-3" />
-                        Ver agenda
-                      </Link>
+                          {c.name}
+                        </Link>
+                        <span
+                          className={cn(
+                            'text-xs font-bold px-1.5 rounded',
+                            c.score.total >= 90
+                              ? 'text-emerald-700 bg-emerald-50'
+                              : 'text-amber-700 bg-amber-50',
+                          )}
+                        >
+                          {c.score.total}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 truncate mt-0.5">{c.email}</p>
                     </div>
                   </div>
-                ))}
+
+                  <div className="mt-3 flex items-center justify-between">
+                    {c.status === 'agendado' ? (
+                      <div className="text-xs flex items-center text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                        <Calendar className="w-3 h-3 mr-1" />
+                        Sincronizado c/ Agenda
+                      </div>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openSchedulingModal(c)
+                        }}
+                        className="text-xs flex items-center text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+                      >
+                        <CalendarPlus className="w-3 h-3 mr-1" />
+                        Agendar
+                      </button>
+                    )}
+                    <Link
+                      to={`/agenda?vaga=${jobId}&candidato=${c.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-xs text-slate-400 hover:text-blue-600 transition-colors flex items-center gap-1"
+                    >
+                      <Calendar className="w-3 h-3" />
+                      Ver agenda
+                    </Link>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         ))}
