@@ -103,13 +103,14 @@ export default function KanbanTab({
   interface ItemColuna {
     faixa: FaixaRodada | null
     candidato: Candidate | null
+    indiceRodada: number | null
   }
 
   const itensDaColuna = (colId: KanbanColumnId): ItemColuna[] => {
     const daColuna = candidatosDaColuna(colId)
 
     if (colId !== 'em_entrevista') {
-      return daColuna.map((c) => ({ faixa: null, candidato: c }))
+      return daColuna.map((c) => ({ faixa: null, candidato: c, indiceRodada: null }))
     }
 
     const grupos = agruparPorRodada(daColuna, etapasDaVaga)
@@ -124,9 +125,10 @@ export default function KanbanTab({
           vazia: grupo.itens.length === 0,
         },
         candidato: null,
+        indiceRodada: null,
       })
       grupo.itens.forEach((c) => {
-        itens.push({ faixa: null, candidato: c })
+        itens.push({ faixa: null, candidato: c, indiceRodada: idx })
       })
     })
 
@@ -354,16 +356,22 @@ export default function KanbanTab({
                   : null
                 const c = item.candidato!
                 return (
-                  <div key={item.faixa ? `faixa-${item.faixa.n}` : c.id}>
+                  <div
+                    key={item.faixa ? `faixa-${item.faixa.n}` : c.id}
+                    style={
+                      item.indiceRodada !== null
+                        ? { marginLeft: recuoRodada(item.indiceRodada) }
+                        : undefined
+                    }
+                  >
                     {item.faixa && cores && (
                       <div
                         style={{
-                          marginLeft: recuoRodada(item.faixa.indice),
                           borderLeft: `3px solid ${cores.borda}`,
                           background: cores.fundo,
                           color: cores.texto,
                         }}
-                        className="px-3 py-1.5 text-xs font-medium rounded mb-2"
+                        className="px-3 py-1.5 text-xs font-medium mb-2"
                       >
                         {`F${item.faixa.n} ${item.faixa.nome}`}
                         {item.faixa.vazia && (
