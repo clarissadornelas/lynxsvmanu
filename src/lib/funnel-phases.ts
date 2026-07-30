@@ -392,3 +392,202 @@ export const COR_FASE: Record<KanbanColumnId, string> = {
   shortlist_final: 'hsl(276 33% 30%)',
   contratado: 'hsl(43 84% 45%)',
 }
+
+export type NotaAvaliacao = 1 | 2 | 3 | 4
+
+export interface OpcaoNota {
+  valor: NotaAvaliacao
+  rotulo: string
+}
+
+export const NOTAS_AVALIACAO: OpcaoNota[] = [
+  { valor: 1, rotulo: 'Não atendeu' },
+  { valor: 2, rotulo: 'Parcial' },
+  { valor: 3, rotulo: 'Atendeu' },
+  { valor: 4, rotulo: 'Superou' },
+]
+
+export function rotuloNota(valor: number | null | undefined): string {
+  if (valor == null) return '—'
+  const opcao = NOTAS_AVALIACAO.find((n) => n.valor === valor)
+  return opcao ? opcao.rotulo : '—'
+}
+
+export type TipoPergunta = 'fechada' | 'aberta'
+
+export type EscopoPergunta = 'casa' | 'vaga' | 'candidato'
+
+const ORDEM_ESCOPO: Record<EscopoPergunta, number> = {
+  casa: 0,
+  vaga: 1,
+  candidato: 2,
+}
+
+export interface PerguntaEtapa {
+  id: string
+  texto: string
+  tipo: TipoPergunta
+  escopo: EscopoPergunta
+  editada?: boolean
+}
+
+interface RawPergunta {
+  id?: unknown
+  texto?: unknown
+  tipo?: unknown
+  escopo?: unknown
+}
+
+export function normalizarPergunta(raw: Record<string, unknown>): PerguntaEtapa {
+  const escopoRaw = typeof raw.escopo === 'string' ? raw.escopo : 'casa'
+  const escopo: EscopoPergunta =
+    escopoRaw === 'vaga' || escopoRaw === 'candidato' ? escopoRaw : 'casa'
+  const tipoRaw = typeof raw.tipo === 'string' ? raw.tipo : 'aberta'
+  const tipo: TipoPergunta =
+    escopo === 'candidato' ? 'aberta' : tipoRaw === 'fechada' ? 'fechada' : 'aberta'
+  return {
+    id: typeof raw.id === 'string' ? raw.id : '',
+    texto: typeof raw.texto === 'string' ? raw.texto : '',
+    tipo,
+    escopo,
+  }
+}
+
+export function parsePerguntas(raw: unknown): PerguntaEtapa[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
+    .map((item) => normalizarPergunta(item))
+}
+
+export function resolverPerguntas(casa: PerguntaEtapa[], vaga: PerguntaEtapa[]): PerguntaEtapa[] {
+  const vagaById = new Map<string, PerguntaEtapa>()
+  for (const p of vaga) {
+    vagaById.set(p.id, p)
+  }
+
+  const result: PerguntaEtapa[] = []
+
+  for (const pCasa of casa) {
+    const override = vagaById.get(pCasa.id)
+    if (override) {
+      result.push({
+        id: pCasa.id,
+        texto: override.texto,
+        tipo: pCasa.tipo,
+        escopo: 'casa',
+        editada: override.texto !== pCasa.texto,
+      })
+      vagaById.delete(pCasa.id)
+    } else {
+      result.push({ ...pCasa })
+    }
+  }
+
+  for (const pVaga of vagaById.values()) {
+    result.push({ ...pVaga })
+  }
+
+  result.sort((a, b) => ORDEM_ESCOPO[a.escopo] - ORDEM_ESCOPO[b.escopo])
+  return result
+}
+
+export type EstadoResposta = 'avaliada' | 'aberta'
+
+export interface RespostaAvaliacao {
+  pergunta_id: string
+  texto: string
+  tipo: TipoPergunta
+  nota: NotaAvaliacao | null
+  resposta_texto: string | null
+  estado: EstadoResposta
+}
+
+export interface AvaliacaoEntrevista {
+  respostas: RespostaAvaliacao[]
+  observacoes: string | null
+}
+
+interface RawResposta {
+  pergunta_id?: unknown
+  texto?: unknown
+  tipo?: unknown
+  nota?: unknown
+  resposta_texto?: unknown
+}
+
+export function parseAvaliacao(raw: unknown): AvaliacaoEntrevista | null {
+  if (typeof raw !== 'object' || raw === null) return null
+  const obj = raw as Record<string, unknown>
+  if (!Array.isArray(obj.respostas)) return null
+
+  const respostas: RespostaAvaliacao[] = obj.respostas
+    .filter((r): r is RawResposta => typeof r === 'object' && r !== null)
+    .map((r) => {
+      const notaRaw = typeof r.nota === 'number' ? r.nota : null
+      const nota: NotaAvaliacao | null =
+        notaRaw !== null && notaRaw >= 1 && notaRaw <= 4 ? (notaRaw as NotaAvaliacao) : null
+      const tipoRaw = typeof r.tipo === 'string' ? r.tipo : 'aberta'
+      const tipo: TipoPergunta = tipoRaw === 'fechada' ? 'fechada' : 'aberta'
+      return {
+        pergunta_id: typeof r.pergunta_id === 'string' ? r.pergunta_id : '',
+        texto: typeof r.texto === 'string' ? r.texto : '',
+        tipo,
+        nota,
+        resposta_texto: typeof r.resposta_texto === 'string' ? r.resposta_texto : null,
+        estado: nota !== null ? 'avaliada' : 'aberta',
+      }
+    })
+
+  return {
+    respostas,
+    observacoes: typeof obj.observacoes === 'string' ? obj.observacoes : null,
+  }
+}
+
+export function montarAvaliacaoVazia(perguntas: PerguntaEtapa[]): AvaliacaoEntrevista {
+  const respostas: RespostaAvaliacao[] = perguntas.map((p) => ({
+    pergunta_id: p.id,
+    texto: p.texto,
+    tipo: p.tipo,
+    nota: null,
+    resposta_texto: null,
+    estado: 'aberta' as EstadoResposta,
+  }))
+  return {
+    respostas,
+    observacoes: null,
+  }
+}
+
+export interface ResultadoCobertura {
+  media: number | null
+  respondidas: number
+  fechadas: number
+}
+
+export function notaECobertura(avaliacao: AvaliacaoEntrevista | null): ResultadoCobertura {
+  if (!avaliacao) return { media: null, respondidas: 0, fechadas: 0 }
+  const fechadas = avaliacao.respostas.filter((r) => r.tipo === 'fechada')
+  const respondidas = fechadas.filter((r) => r.nota !== null)
+  if (respondidas.length === 0) {
+    return { media: null, respondidas: 0, fechadas: fechadas.length }
+  }
+  const soma = respondidas.reduce((acc, r) => acc + (r.nota ?? 0), 0)
+  return {
+    media: soma / respondidas.length,
+    respondidas: respondidas.length,
+    fechadas: fechadas.length,
+  }
+}
+
+export function formatarNotaCobertura(cobertura: ResultadoCobertura): string {
+  const mediaStr =
+    cobertura.media === null
+      ? 'sem nota'
+      : cobertura.media.toLocaleString('pt-BR', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 1,
+        })
+  return `${mediaStr} · ${cobertura.respondidas} de ${cobertura.fechadas}`
+}
