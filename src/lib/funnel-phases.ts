@@ -677,6 +677,7 @@ export type ColunaEntitlement = 'ag1_assessor' | 'ag2_copiloto' | 'ag3_ativador'
 
 export interface DefinicaoAgente {
   agentType: AgentType
+  id: string
   nome: string
   descricao: string
   rota: string
@@ -685,33 +686,44 @@ export interface DefinicaoAgente {
   rotuloMetrica: string
 }
 
+export const CTA_CONTRATAR_SEM_PERMISSAO = 'Fale com o administrador para ativar'
+
+export function agenteContratado(idsContratados: string[], agentType: string): boolean {
+  const def = definicaoAgente(agentType)
+  if (!def) return false
+  return idsContratados.includes(def.id)
+}
+
 export const AGENTES: DefinicaoAgente[] = [
   {
     agentType: 'assessor',
+    id: '01',
     nome: 'Meu Assessor',
     descricao:
       'Mande os currículos pelo WhatsApp. O assessor entra em contato com cada candidato e faz os agendamentos.',
     rota: '/agente-01',
-    cor: 'hsl(197 86% 58%)',
+    cor: '#457B9D',
     colunaEntitlement: 'ag1_assessor',
     rotuloMetrica: 'em processo',
   },
   {
     agentType: 'copiloto',
+    id: '02',
     nome: 'Copiloto',
     descricao: 'Transcrição de entrevistas, avaliação estruturada e leitura comportamental.',
     rota: '/agente-02',
-    cor: 'hsl(154 60% 45%)',
+    cor: '#06A77D',
     colunaEntitlement: 'ag2_copiloto',
     rotuloMetrica: 'entrevistas',
   },
   {
     agentType: 'base_ativa',
+    id: '03',
     nome: 'Base Ativa',
     descricao:
       'O candidato que não deu match hoje vale ouro amanhã. Banco de talentos com follow-up periódico.',
     rota: '/agente-03',
-    cor: 'hsl(43 84% 55%)',
+    cor: '#F77F00',
     colunaEntitlement: 'ag3_ativador',
     rotuloMetrica: 'talentos',
   },

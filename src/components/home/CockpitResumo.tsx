@@ -43,13 +43,6 @@ const AGENT_DOT_COLORS: Record<string, string> = {
   base_ativa: 'bg-agente-base-ativa',
 }
 
-function getGreeting(): string {
-  const hour = new Date().getHours()
-  if (hour < 12) return 'Bom dia'
-  if (hour < 18) return 'Boa tarde'
-  return 'Boa noite'
-}
-
 function getRelativeDeadline(deadlineStr: string): string {
   const now = new Date()
   const deadline = new Date(deadlineStr)
@@ -165,7 +158,7 @@ export function CockpitResumo() {
             .select('id, candidato_id, vaga_id')
             .eq('tenant_id', tenantId)
             .eq('status', 'realizada')
-            .is('parecer', null)
+            .is('avaliada_em', null)
             .limit(4)
 
           const items: PendenciaItem[] = []
@@ -246,67 +239,8 @@ export function CockpitResumo() {
     loadData()
   }, [tenantId, usuarioId])
 
-  const firstName = userName ? userName.split(' ')[0] : null
-  const greeting = firstName ? `${getGreeting()}, ${firstName}` : getGreeting()
-
-  const tiles = [
-    {
-      label: 'Em processo',
-      icon: ClipboardList,
-      value: metrics.emProcesso,
-      barColor: 'bg-agente-assessor',
-      iconColor: 'text-agente-assessor-forte',
-      iconBg: 'bg-agente-assessor/10',
-    },
-    {
-      label: 'Entrevistas',
-      icon: Mic,
-      value: metrics.entrevistas7d,
-      barColor: 'bg-agente-copiloto',
-      iconColor: 'text-agente-copiloto-forte',
-      iconBg: 'bg-agente-copiloto/10',
-    },
-    {
-      label: 'Base de talentos',
-      icon: Target,
-      value: metrics.baseAtiva,
-      barColor: 'bg-agente-base-ativa',
-      iconColor: 'text-agente-base-ativa-forte',
-      iconBg: 'bg-agente-base-ativa/10',
-    },
-  ]
-
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-slate-900">{greeting}</h2>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {tiles.map((tile) => {
-          const Icon = tile.icon
-          return (
-            <div
-              key={tile.label}
-              className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-            >
-              <div className={`absolute top-0 left-0 h-1 w-full ${tile.barColor}`} />
-              <div className="flex items-center gap-3">
-                <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-lg ${tile.iconBg}`}
-                >
-                  <Icon className={`h-5 w-5 ${tile.iconColor}`} />
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">{tile.label}</p>
-                  <p className="text-2xl font-bold text-slate-900">
-                    {tile.value === null ? '—' : tile.value}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
       <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <button
           onClick={() => toggle('precisa')}

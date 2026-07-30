@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ClipboardList, Mic, Target, ArrowRight, Loader2, Settings2 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -8,9 +9,22 @@ import { Link } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 import { useActiveContext } from '@/stores/useActiveContext'
-import { AGENT_BY_KEY, formatBRL } from '@/lib/constants'
+import { AGENTES, agenteContratado, CTA_CONTRATAR_SEM_PERMISSAO } from '@/lib/funnel-phases'
 import { CheckoutModal } from '@/components/central-agentes/CheckoutModal'
 import { CockpitResumo } from '@/components/home/CockpitResumo'
+
+const ICONES_AGENTE: Record<string, LucideIcon> = {
+  assessor: ClipboardList,
+  copiloto: Mic,
+  base_ativa: Target,
+}
+
+function getGreeting(): string {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Bom dia'
+  if (hour < 18) return 'Boa tarde'
+  return 'Boa noite'
+}
 
 interface AgentConfig {
   ativo: boolean | null
@@ -18,12 +32,20 @@ interface AgentConfig {
 }
 
 export default function Index() {
-  const { user } = useAuth()
-  const { tenantId } = useActiveContext()
+  const { user, papelAtivo } = useAuth()
+  const { tenantId, usuarioId } = useActiveContext()
   const [hiredAgentIds, setHiredAgentIds] = useState<string[]>([])
   const [agentConfigs, setAgentConfigs] = useState<Record<string, AgentConfig>>({})
+  const [userName, setUserName] = useState<string | null>(null)
+  const [metrics, setMetrics] = useState<Record<string, number | null>>({
+    assessor: null,
+    copiloto: null,
+    base_ativa: null,
+  })
   const [loading, setLoading] = useState(true)
   const [checkoutAgent, setCheckoutAgent] = useState<string | null>(null)
+
+  const isAdmin = papelAtivo === 'admin'
 
   useEffect(() => {
     async function loadData() {
@@ -32,36 +54,95 @@ export default function Index() {
         return
       }
 
-      const { data: acesso, error } = await supabase
-        .from('acesso_agentes')
-        .select('agente_id')
-        .eq('tenant_id', tenantId)
-        .eq('ativo', true)
+      const promises: Promise<void>[] = []
 
-      if (!error && acesso) {
-        setHiredAgentIds(acesso.map((d: any) => d.agente_id))
+      promises.push(
+        supabase
+          .from('acesso_agentes')
+          .select('agente_id')
+          .eq('tenant_id', tenantId)
+          .eq('ativo', true)
+          .then(({ data, error }) => {
+            if (!error && data) {
+              setHiredAgentIds(data.map((d: any) => d.agente_id))
+            }
+          }),
+      )
+
+      promises.push(
+        supabase
+          .from('configuracoes_agente')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .then(({ data }) => {
+            const configMap: Record<string, AgentConfig> = {}
+            for (const c of (data as any[]) ?? []) {
+              if (c.agent_type) {
+                configMap[c.agent_type] = {
+                  ativo: c.ativo,
+                  nome_agente: c.nome_agente ?? null,
+                }
+              }
+            }
+            setAgentConfigs(configMap)
+          }),
+      )
+
+      if (usuarioId) {
+        promises.push(
+          supabase
+            .from('usuarios')
+            .select('nome')
+            .eq('id', usuarioId)
+            .maybeSingle()
+            .then(({ data }) => {
+              setUserName(data?.nome ?? null)
+            }),
+        )
       }
 
-      const { data: configs } = await supabase
-        .from('configuracoes_agente')
-        .select('*')
-        .eq('tenant_id', tenantId)
+      promises.push(
+        supabase
+          .from('candidatos')
+          .select('id', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId)
+          .in('status', ['novo', 'shortlist', 'agendado', 'entrevistado'])
+          .then(({ count }) => {
+            setMetrics((prev) => ({ ...prev, assessor: count ?? 0 }))
+          }),
+      )
 
-      const configMap: Record<string, AgentConfig> = {}
-      for (const c of (configs as any[]) ?? []) {
-        if (c.agent_type) {
-          configMap[c.agent_type] = {
-            ativo: c.ativo,
-            nome_agente: c.nome_agente ?? null,
-          }
-        }
-      }
-      setAgentConfigs(configMap)
+      const now = new Date()
+      const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+      promises.push(
+        supabase
+          .from('agendamentos')
+          .select('id', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId)
+          .eq('status', 'agendada')
+          .gte('agendada_para', now.toISOString())
+          .lte('agendada_para', sevenDaysLater.toISOString())
+          .then(({ count }) => {
+            setMetrics((prev) => ({ ...prev, copiloto: count ?? 0 }))
+          }),
+      )
 
+      promises.push(
+        supabase
+          .from('base_ativa')
+          .select('id', { count: 'exact', head: true })
+          .eq('tenant_id', tenantId)
+          .eq('opt_out', false)
+          .then(({ count }) => {
+            setMetrics((prev) => ({ ...prev, base_ativa: count ?? 0 }))
+          }),
+      )
+
+      await Promise.all(promises)
       setLoading(false)
     }
     loadData()
-  }, [user, tenantId])
+  }, [user, tenantId, usuarioId])
 
   if (loading) {
     return (
@@ -71,66 +152,34 @@ export default function Index() {
     )
   }
 
-  const agents = [
-    {
-      id: '01',
-      agentType: 'assessor',
-      name: 'Meu Assessor',
-      icon: ClipboardList,
-      colorStyles: {
-        text: 'text-[#457B9D]',
-        bg: 'bg-[#457B9D]/10',
-        button: 'bg-[#457B9D] hover:bg-[#3d6e8c]',
-      },
-      description:
-        'Mande os currículos pelo WhatsApp. O assessor entra em contato com cada candidato e faz os agendamentos.',
-      link: '/agente-01',
-    },
-    {
-      id: '02',
-      agentType: 'copiloto',
-      name: 'Copiloto',
-      icon: Mic,
-      colorStyles: {
-        text: 'text-[#06A77D]',
-        bg: 'bg-[#06A77D]/10',
-        button: 'bg-[#06A77D] hover:bg-[#059670]',
-      },
-      description: 'Transcrição de entrevistas com parecer comportamental DISC',
-      link: '/agente-02',
-    },
-    {
-      id: '03',
-      agentType: 'base_ativa',
-      name: 'Base Ativa',
-      icon: Target,
-      colorStyles: {
-        text: 'text-[#F77F00]',
-        bg: 'bg-[#F77F00]/10',
-        button: 'bg-[#F77F00] hover:bg-[#e67500]',
-      },
-      description:
-        'O candidato que não deu match hoje vale ouro amanhã. Mantenha a sua base ativa com notificações periódicas e banco de talentos',
-      link: '/agente-03',
-    },
-  ]
+  const greeting = getGreeting()
+  const firstName = userName ? userName.split(' ')[0] : null
+  const activeCount = AGENTES.filter((a) => agenteContratado(hiredAgentIds, a.agentType)).length
 
   return (
     <div className="space-y-8 animate-fade-in">
-      <CockpitResumo />
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          {firstName ? `${greeting}, ${firstName}` : greeting}
+        </h1>
+      </div>
+
       <div>
         <h2 className="text-lg font-semibold tracking-tight text-slate-900">Meus agentes</h2>
-        <p className="text-sm text-slate-500 mt-0.5">Escolha qual agente você deseja usar</p>
+        <p className="text-sm text-slate-500 mt-0.5">
+          {activeCount} de {AGENTES.length} ativos
+        </p>
       </div>
 
       <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        {agents.map((agent) => {
-          const Icon = agent.icon
-          const isHired = hiredAgentIds.includes(agent.id)
+        {AGENTES.map((agent) => {
+          const Icon = ICONES_AGENTE[agent.agentType]
+          const isHired = agenteContratado(hiredAgentIds, agent.agentType)
           const config = agentConfigs[agent.agentType]
           const isPaused = config?.ativo === false
           const customName = config?.nome_agente ?? null
-          const price = AGENT_BY_KEY[agent.agentType]?.price ?? 0
+          const displayName = customName ?? agent.nome
+          const valorMetrica = isHired ? metrics[agent.agentType] : null
 
           return (
             <Card
@@ -143,7 +192,8 @@ export default function Index() {
               <CardHeader className="pb-4">
                 <div className="flex justify-between items-start mb-4">
                   <div
-                    className={cn('p-3 rounded-xl', agent.colorStyles.bg, agent.colorStyles.text)}
+                    className="p-3 rounded-xl"
+                    style={{ backgroundColor: agent.cor + '1a', color: agent.cor }}
                   >
                     <Icon className="w-6 h-6" />
                   </div>
@@ -173,7 +223,7 @@ export default function Index() {
                           variant="outline"
                           className="bg-emerald-50 text-emerald-700 border-emerald-200 font-medium"
                         >
-                          Contratado
+                          Ativo
                         </Badge>
                       )
                     ) : (
@@ -181,46 +231,56 @@ export default function Index() {
                         variant="outline"
                         className="bg-slate-50 text-slate-500 border-slate-200 font-medium"
                       >
-                        Indisponível
+                        Inativo
                       </Badge>
                     )}
                   </div>
                 </div>
-                <CardTitle className="text-xl">{customName ? customName : agent.name}</CardTitle>
-                {customName && <p className="text-xs text-slate-400">{agent.name}</p>}
-                <CardDescription className="pt-2 text-slate-600 min-h-[80px]">
-                  {agent.description}
-                </CardDescription>
+                <CardTitle className="text-xl">{displayName}</CardTitle>
+                {customName && <p className="text-xs text-slate-400">{agent.nome}</p>}
+                {isHired ? (
+                  <div className="pt-2 min-h-[80px]">
+                    <p className="text-3xl font-bold text-slate-900">
+                      {valorMetrica !== null && valorMetrica !== undefined ? valorMetrica : '—'}
+                    </p>
+                    <p className="text-sm text-slate-500">{agent.rotuloMetrica}</p>
+                  </div>
+                ) : (
+                  <CardDescription className="pt-2 text-slate-600 min-h-[80px]">
+                    {agent.descricao}
+                  </CardDescription>
+                )}
               </CardHeader>
               <CardFooter className="mt-auto pt-4 border-t border-slate-100 bg-slate-50/50">
                 {isHired ? (
-                  <Link to={agent.link} className="w-full">
-                    <Button className={cn('w-full gap-2 text-white', agent.colorStyles.button)}>
+                  <Link to={agent.rota} className="w-full">
+                    <Button
+                      className="w-full gap-2 text-white hover:opacity-90"
+                      style={{ backgroundColor: agent.cor }}
+                    >
                       Acessar <ArrowRight className="w-4 h-4" />
                     </Button>
                   </Link>
+                ) : isAdmin ? (
+                  <Button
+                    className="w-full gap-2 text-white hover:opacity-90"
+                    style={{ backgroundColor: agent.cor }}
+                    onClick={() => setCheckoutAgent(agent.agentType)}
+                  >
+                    Contratar
+                  </Button>
                 ) : (
-                  <div className="w-full space-y-3">
-                    <div className="flex items-baseline justify-center gap-1">
-                      <span className="text-xl font-bold text-slate-900">
-                        R$ {formatBRL(price)}
-                      </span>
-                      <span className="text-sm font-medium text-slate-500">/mês</span>
-                    </div>
-                    <Button
-                      variant="outline"
-                      className="w-full bg-white hover:bg-slate-50 border-slate-200"
-                      onClick={() => setCheckoutAgent(agent.agentType)}
-                    >
-                      Contratar
-                    </Button>
-                  </div>
+                  <p className="w-full text-center text-sm text-slate-500">
+                    {CTA_CONTRATAR_SEM_PERMISSAO}
+                  </p>
                 )}
               </CardFooter>
             </Card>
           )
         })}
       </div>
+
+      <CockpitResumo />
 
       {checkoutAgent && (
         <CheckoutModal
