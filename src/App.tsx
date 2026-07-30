@@ -17,6 +17,7 @@ import Candidates from './pages/Candidates'
 import CandidateProfile from './pages/candidatos/CandidateProfile'
 import InterviewSetup from './pages/entrevistas/InterviewSetup'
 import InterviewRoom from './pages/entrevistas/InterviewRoom'
+import AvaliacaoEntrevista from './pages/entrevistas/AvaliacaoEntrevista'
 import CandidateRoom from './pages/entrevistas/CandidateRoom'
 import Agenda from './pages/Agenda'
 import ConversationConsole from './pages/conversas/ConversationConsole'
@@ -108,6 +109,7 @@ const AppRoutes = () => (
           <Route path="/entrevistas" element={<InterviewSetup />} />
           <Route path="/entrevistas/nova" element={<InterviewSetup />} />
           <Route path="/entrevistas/:id" element={<InterviewRoom />} />
+          <Route path="/avaliar/:id" element={<AvaliacaoEntrevista />} />
 
           <Route path="/agenda" element={<Agenda />} />
           <Route path="/conversas" element={<ConversationConsole />} />
