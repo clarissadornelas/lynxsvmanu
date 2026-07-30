@@ -591,3 +591,82 @@ export function formatarNotaCobertura(cobertura: ResultadoCobertura): string {
         })
   return `${mediaStr} · ${cobertura.respondidas} de ${cobertura.fechadas}`
 }
+
+export type TipoRodada = 'rh' | 'tecnica' | 'gestor' | 'cultural' | 'prova'
+
+export interface OpcaoTipoRodada {
+  valor: TipoRodada
+  rotulo: string
+  descricao: string
+}
+
+export const TIPOS_RODADA: OpcaoTipoRodada[] = [
+  {
+    valor: 'rh',
+    rotulo: 'RH',
+    descricao: 'Entrevista comportamental e de alinhamento inicial com o recrutador.',
+  },
+  {
+    valor: 'tecnica',
+    rotulo: 'Técnica',
+    descricao: 'Avaliação de conhecimentos técnicos específicos para a vaga.',
+  },
+  {
+    valor: 'gestor',
+    rotulo: 'Gestor',
+    descricao: 'Entrevista com o gestor direto da área contratante.',
+  },
+  {
+    valor: 'cultural',
+    rotulo: 'Cultural',
+    descricao: 'Avaliação de fit cultural e alinhamento de valores com a empresa.',
+  },
+  {
+    valor: 'prova',
+    rotulo: 'Prova técnica',
+    descricao: 'Resolução de um caso prático ou prova técnica estruturada.',
+  },
+]
+
+export function rotuloTipoRodada(valor: string): string {
+  const opcao = TIPOS_RODADA.find((t) => t.valor === valor)
+  return opcao ? opcao.rotulo : 'RH'
+}
+
+export function tipoRodadaValido(valor: string): TipoRodada {
+  const opcao = TIPOS_RODADA.find((t) => t.valor === valor)
+  return opcao ? opcao.valor : 'rh'
+}
+
+export type EstadoRodada = 'sem_agenda' | 'com_agenda' | 'realizada' | 'avaliada' | 'dispensada'
+
+export const ESTADO_RODADA_LABELS: Record<EstadoRodada, string> = {
+  sem_agenda: 'sem agenda',
+  com_agenda: 'agendado',
+  realizada: 'realizada',
+  avaliada: 'avaliada',
+  dispensada: 'dispensada',
+}
+
+export function rotuloEstadoRodada(estado: string): string {
+  if (estado in ESTADO_RODADA_LABELS) {
+    return ESTADO_RODADA_LABELS[estado as EstadoRodada]
+  }
+  return 'sem agenda'
+}
+
+export interface CoberturaDeRodadas {
+  avaliadas: number
+  dispensadas: number
+  totalRodadas: number
+}
+
+export function formatarCoberturaDeRodadas(cobertura: CoberturaDeRodadas): string {
+  if (cobertura.totalRodadas <= 1 && cobertura.dispensadas > 0) {
+    return 'rodada dispensada'
+  }
+  if (cobertura.dispensadas === 0) {
+    return ''
+  }
+  return `${cobertura.avaliadas} de ${cobertura.totalRodadas} avaliadas`
+}
