@@ -383,3 +383,12 @@ export function rotuloMotivoSaida(motivo: string | null | undefined): string {
   }
   return motivo.replace(/_/g, ' ')
 }
+
+export const COR_FASE: Record<KanbanColumnId, string> = {
+  a_triar: 'hsl(276 15% 82%)',
+  longlist: 'hsl(197 60% 68%)',
+  em_entrevista: 'hsl(157 45% 62%)',
+  entrevistados: 'hsl(165 75% 28%)',
+  shortlist_final: 'hsl(276 33% 30%)',
+  contratado: 'hsl(43 84% 45%)',
+}

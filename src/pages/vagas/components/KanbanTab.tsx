@@ -40,6 +40,7 @@ import {
   agruparPorRodada,
   recuoRodada,
   classesRodada,
+  rotuloMotivoSaida,
   type KanbanColumnId,
 } from '@/lib/funnel-phases'
 import useRecruitmentStore, { Candidate, CandidateStatus } from '@/stores/useRecruitmentStore'
@@ -82,6 +83,7 @@ export default function KanbanTab({
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [booking, setBooking] = useState(false)
   const [saindoCandidato, setSaindoCandidato] = useState<Candidate | null>(null)
+  const [saidasAbertas, setSaidasAbertas] = useState<Record<string, boolean>>({})
 
   const availability = getAvailabilityStatus(localJanela, localDataLimite)
   const currentJob = jobs.find((j) => j.id === jobId)
@@ -568,8 +570,34 @@ export default function KanbanTab({
               })}
             </div>
             {eliminadosDaColuna(col.id).length > 0 && (
-              <div className="border-t border-slate-200 px-3 py-2 text-xs text-slate-400">
-                {eliminadosDaColuna(col.id).length} fora do processo
+              <div className="border-t border-slate-200">
+                <button
+                  className="w-full px-3 py-2 text-xs text-slate-400 flex items-center gap-1 hover:text-slate-600 transition-colors"
+                  onClick={() => setSaidasAbertas((prev) => ({ ...prev, [col.id]: !prev[col.id] }))}
+                >
+                  <span className="text-[10px]">{saidasAbertas[col.id] ? '▾' : '▸'}</span>
+                  {eliminadosDaColuna(col.id).length} fora do processo
+                </button>
+                {saidasAbertas[col.id] && (
+                  <div className="px-2 pb-2 space-y-1.5">
+                    {eliminadosDaColuna(col.id).map((c) => (
+                      <div
+                        key={c.id}
+                        className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2"
+                      >
+                        <Link
+                          to={`/candidatos/${c.id}`}
+                          className="block text-sm font-medium text-slate-900 truncate hover:text-indigo-600 hover:underline"
+                        >
+                          {c.name}
+                        </Link>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {rotuloMotivoSaida((c as { motivoSaida?: string | null }).motivoSaida)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

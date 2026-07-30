@@ -8,7 +8,15 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Plus, Clock, Info, Search, Archive } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { getAvailabilityStatus } from '@/lib/job-availability-status'
-import { FUNNEL_PHASES, phaseCount } from '@/lib/funnel-phases'
+import {
+  FUNNEL_PHASES,
+  phaseCount,
+  KANBAN_COLUMNS,
+  deriveKanbanColumn,
+  parseEtapas,
+  COR_FASE,
+  type KanbanColumnId,
+} from '@/lib/funnel-phases'
 import type { Candidate } from '@/stores/useRecruitmentStore'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -50,22 +58,45 @@ function InfoIcon({ text }: { text: string }) {
   )
 }
 
-function FunnelPills({ candidates }: { candidates: Candidate[] }) {
+function contarPorColuna(candidates: Candidate[], etapas: unknown): Record<string, number> {
+  const totalRodadas = parseEtapas(etapas).length
+  const counts: Record<string, number> = {}
+  for (const col of KANBAN_COLUMNS) {
+    counts[col.id] = 0
+  }
+  for (const c of candidates) {
+    if (c.situacao === 'eliminado') continue
+    const colId = deriveKanbanColumn(
+      c.status,
+      c.etapaAtual,
+      totalRodadas,
+      c.shortlistOrdem,
+      c.faseSaida,
+    )
+    counts[colId] = (counts[colId] || 0) + 1
+  }
+  return counts
+}
+
+function FunnelPills({ candidates, etapas }: { candidates: Candidate[]; etapas?: unknown }) {
+  const counts = contarPorColuna(candidates, etapas)
   return (
     <div className="flex items-center gap-1.5 shrink-0">
-      {FUNNEL_PHASES.map((phase) => {
-        const count = phaseCount(candidates, phase.id)
+      {KANBAN_COLUMNS.map((phase) => {
+        const count = counts[phase.id] ?? 0
         return (
           <Tooltip key={phase.id}>
             <TooltipTrigger asChild>
               <div
                 className={cn(
-                  'flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium',
-                  phase.badgeClass,
+                  'flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600',
                   count === 0 && 'opacity-40',
                 )}
               >
-                <span className={cn('w-1.5 h-1.5 rounded-full', phase.dotClass)} />
+                <span
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ backgroundColor: COR_FASE[phase.id as KanbanColumnId] }}
+                />
                 {count}
               </div>
             </TooltipTrigger>
@@ -175,11 +206,24 @@ export default function JobsList() {
       color: 'text-emerald-600',
       tooltip: 'Número de vagas ativas no sistema. Fonte: tabela de vagas.',
     },
-    ...FUNNEL_PHASES.map((phase) => ({
-      label: phase.label,
-      value: phaseCount(candidates, phase.id),
-      color: phase.textClass,
-      tooltip: phase.tooltip,
+    ...KANBAN_COLUMNS.map((col) => ({
+      label: col.label,
+      value: candidates.filter((c) => {
+        if (c.situacao === 'eliminado') return false
+        const job = jobs.find((j) => j.id === c.jobId)
+        const totalRodadas = parseEtapas(job?.etapas).length
+        return (
+          deriveKanbanColumn(
+            c.status,
+            c.etapaAtual,
+            totalRodadas,
+            c.shortlistOrdem,
+            c.faseSaida,
+          ) === col.id
+        )
+      }).length,
+      color: 'text-slate-700',
+      tooltip: col.tooltip,
     })),
   ]
 
@@ -398,7 +442,10 @@ export default function JobsList() {
                     <p className="text-xs text-slate-400 truncate">{job.tenantName}</p>
                   </div>
                 </div>
-                <FunnelPills candidates={jobCandidates} />
+                <FunnelPills
+                  candidates={jobCandidates}
+                  etapas={(job as unknown as { etapas?: unknown }).etapas}
+                />
               </Link>
             )
           })

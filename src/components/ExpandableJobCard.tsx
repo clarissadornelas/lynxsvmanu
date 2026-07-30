@@ -1,15 +1,21 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronDown, ChevronRight, ArrowRight, Settings } from 'lucide-react'
+import { ChevronDown, ChevronRight, ArrowRight, Settings, Clock } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import type { Job, Candidate } from '@/stores/useRecruitmentStore'
-import { STATUS_COLORS, LANES, NEXT_STEPS } from '@/lib/recruitment-constants'
 import { getAvailabilityStatus } from '@/lib/job-availability-status'
-import { Clock } from 'lucide-react'
+import {
+  KANBAN_COLUMNS,
+  deriveKanbanColumn,
+  parseEtapas,
+  rotuloMotivoSaida,
+  COR_FASE,
+  type KanbanColumnId,
+} from '@/lib/funnel-phases'
 
 interface Props {
   job: Job
@@ -20,12 +26,20 @@ interface Props {
 export function ExpandableJobCard({ job, candidates, onJobClick }: Props) {
   const [expanded, setExpanded] = useState(false)
 
-  const statusCounts: Record<string, number> = {}
-  for (const c of candidates) {
-    statusCounts[c.status] = (statusCounts[c.status] || 0) + 1
+  const totalRodadas = parseEtapas(job.etapas).length
+
+  const colunaDe = (c: Candidate): KanbanColumnId =>
+    deriveKanbanColumn(c.status, c.etapaAtual, totalRodadas, c.shortlistOrdem, c.faseSaida)
+
+  const ativos = candidates.filter((c) => c.situacao !== 'eliminado')
+  const saidos = candidates.filter((c) => c.situacao === 'eliminado')
+
+  const colunaCounts: Record<string, number> = {}
+  for (const c of ativos) {
+    const col = colunaDe(c)
+    colunaCounts[col] = (colunaCounts[col] || 0) + 1
   }
-  const total = candidates.length || 1
-  const gateCount = candidates.filter((c) => c.status === 'agendado').length
+  const total = ativos.length || 1
 
   return (
     <Card className="border-slate-200">
@@ -88,47 +102,45 @@ export function ExpandableJobCard({ job, candidates, onJobClick }: Props) {
           </div>
         </div>
         <div className="flex h-2 rounded-full overflow-hidden bg-slate-100">
-          {Object.entries(statusCounts).map(([status, count]) => (
-            <div
-              key={status}
-              className="h-full transition-all"
-              style={{
-                width: `${(count / total) * 100}%`,
-                backgroundColor: STATUS_COLORS[status] || '#E2E8F0',
-              }}
-              title={`${status}: ${count}`}
-            />
-          ))}
+          {KANBAN_COLUMNS.map((col) => {
+            const count = colunaCounts[col.id] || 0
+            if (count === 0) return null
+            return (
+              <div
+                key={col.id}
+                className="h-full transition-all"
+                style={{
+                  width: `${(count / total) * 100}%`,
+                  backgroundColor: COR_FASE[col.id],
+                }}
+                title={`${col.label}: ${count}`}
+              />
+            )
+          })}
         </div>
       </div>
 
       {expanded && (
         <CardContent className="pt-0 space-y-4">
-          {LANES.map((lane, idx) => {
-            const laneCandidates = candidates.filter((c) => lane.statuses.includes(c.status))
+          {KANBAN_COLUMNS.map((col) => {
+            const colCandidates = ativos.filter((c) => colunaDe(c) === col.id)
             return (
-              <div key={lane.key}>
-                {idx === 1 && (
-                  <div className="flex items-center gap-2 my-3">
-                    <div className="flex-1 border-t-2 border-dotted border-slate-300" />
-                    <span className="text-xs text-slate-500 font-medium whitespace-nowrap">
-                      portão → Copiloto · {gateCount} pronto(s)
-                    </span>
-                    <div className="flex-1 border-t-2 border-dotted border-slate-300" />
-                  </div>
-                )}
+              <div key={col.id}>
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: lane.color }} />
-                  <span className="text-sm font-medium text-slate-700">{lane.label}</span>
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: COR_FASE[col.id] }}
+                  />
+                  <span className="text-sm font-medium text-slate-700">{col.label}</span>
                   <Badge variant="secondary" className="text-xs">
-                    {laneCandidates.length}
+                    {colCandidates.length}
                   </Badge>
                 </div>
-                {laneCandidates.length === 0 ? (
+                {colCandidates.length === 0 ? (
                   <p className="text-xs text-slate-400 pl-5">Nenhum candidato</p>
                 ) : (
                   <div className="space-y-1 pl-5">
-                    {laneCandidates.map((c) => (
+                    {colCandidates.map((c) => (
                       <div
                         key={c.id}
                         className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors"
@@ -142,7 +154,7 @@ export function ExpandableJobCard({ job, candidates, onJobClick }: Props) {
                           </Avatar>
                           <span
                             className="w-2 h-2 rounded-full shrink-0"
-                            style={{ backgroundColor: STATUS_COLORS[c.status] || '#E2E8F0' }}
+                            style={{ backgroundColor: COR_FASE[col.id] }}
                           />
                           <Link
                             to={`/candidatos/${c.id}`}
@@ -157,7 +169,7 @@ export function ExpandableJobCard({ job, candidates, onJobClick }: Props) {
                           </span>
                           <Link to={`/candidatos/${c.id}`}>
                             <Button size="sm" variant="ghost" className="h-7 text-xs gap-1">
-                              {NEXT_STEPS[c.status]}
+                              Ver perfil
                             </Button>
                           </Link>
                         </div>
@@ -168,6 +180,44 @@ export function ExpandableJobCard({ job, candidates, onJobClick }: Props) {
               </div>
             )
           })}
+
+          {saidos.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-3 h-3 rounded-full bg-slate-300" />
+                <span className="text-sm font-medium text-slate-500">Fora do processo</span>
+                <Badge variant="secondary" className="text-xs">
+                  {saidos.length}
+                </Badge>
+              </div>
+              <div className="space-y-1 pl-5">
+                {saidos.map((c) => (
+                  <div
+                    key={c.id}
+                    className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 opacity-70"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Avatar className="w-7 h-7">
+                        <AvatarImage src={c.avatarUrl || undefined} alt={c.name} />
+                        <AvatarFallback className="text-xs">
+                          {c.name?.charAt(0)?.toUpperCase() || '?'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <Link
+                        to={`/candidatos/${c.id}`}
+                        className="text-sm font-medium text-slate-600 truncate hover:text-indigo-600"
+                      >
+                        {c.name || 'Sem nome'}
+                      </Link>
+                    </div>
+                    <span className="text-xs text-slate-400 shrink-0">
+                      {rotuloMotivoSaida(c.motivoSaida)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       )}
     </Card>
