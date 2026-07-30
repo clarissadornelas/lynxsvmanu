@@ -93,6 +93,19 @@ export default function KanbanTab({
 
   const etapasDaVaga = parseEtapas(currentJob?.etapas)
 
+  const diasAlerta =
+    typeof currentJob?.dias_alerta === 'number' && currentJob.dias_alerta > 0
+      ? currentJob.dias_alerta
+      : 7
+
+  const tempoParaExibir = (c: Candidate): string | null => {
+    const referencia = (c as { situacaoEm?: string | null }).situacaoEm
+    if (!referencia) return null
+    const dias = Math.floor((Date.now() - new Date(referencia).getTime()) / 86400000)
+    if (isNaN(dias) || dias < diasAlerta) return null
+    return `${dias} dias`
+  }
+
   interface FaixaRodada {
     n: number
     nome: string
@@ -125,7 +138,7 @@ export default function KanbanTab({
           vazia: grupo.itens.length === 0,
         },
         candidato: null,
-        indiceRodada: null,
+        indiceRodada: idx,
       })
       grupo.itens.forEach((c) => {
         itens.push({ faixa: null, candidato: c, indiceRodada: idx })
@@ -398,54 +411,47 @@ export default function KanbanTab({
                             </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0 flex-1">
-                            <div className="flex justify-between items-start">
+                            <div className="flex justify-between items-start gap-2">
                               <Link
                                 to={`/candidatos/${c.id}`}
                                 className="font-medium text-sm text-slate-900 truncate hover:text-indigo-600 hover:underline"
                               >
                                 {c.name}
                               </Link>
-                              <span
-                                className={cn(
-                                  'text-xs font-bold px-1.5 rounded',
-                                  c.score.total >= 90
-                                    ? 'text-emerald-700 bg-emerald-50'
-                                    : 'text-amber-700 bg-amber-50',
-                                )}
-                              >
-                                {c.score.total}
-                              </span>
+                              {(col.id === 'a_triar' || col.id === 'longlist') && (
+                                <span
+                                  className={cn(
+                                    'text-xs font-bold px-1.5 rounded shrink-0',
+                                    c.score.total >= 90
+                                      ? 'text-emerald-700 bg-emerald-50'
+                                      : 'text-amber-700 bg-amber-50',
+                                  )}
+                                >
+                                  {c.score.total}
+                                </span>
+                              )}
                             </div>
-                            <p className="text-xs text-slate-500 truncate mt-0.5">{c.email}</p>
+                            {tempoParaExibir(c) && (
+                              <p className="text-xs mt-0.5 text-orange-600">{tempoParaExibir(c)}</p>
+                            )}
                           </div>
                         </div>
 
-                        <div className="mt-3 flex items-center justify-between">
+                        <div className="mt-2 flex items-center justify-between">
                           {c.status === 'agendado' ? (
-                            <div className="text-xs flex items-center text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                              <Calendar className="w-3 h-3 mr-1" />
-                              Sincronizado c/ Agenda
-                            </div>
+                            <span className="text-xs text-slate-500">agendado</span>
                           ) : (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
                                 openSchedulingModal(c)
                               }}
-                              className="text-xs flex items-center text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+                              className="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
                             >
-                              <CalendarPlus className="w-3 h-3 mr-1" />
                               Agendar
                             </button>
                           )}
-                          <Link
-                            to={`/agenda?vaga=${jobId}&candidato=${c.id}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-xs text-slate-400 hover:text-blue-600 transition-colors flex items-center gap-1"
-                          >
-                            <Calendar className="w-3 h-3" />
-                            Ver agenda
-                          </Link>
+                          <span />
                         </div>
                       </div>
                     )}
