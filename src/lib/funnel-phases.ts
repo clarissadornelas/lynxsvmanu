@@ -670,3 +670,63 @@ export function formatarCoberturaDeRodadas(cobertura: CoberturaDeRodadas): strin
   }
   return `${cobertura.avaliadas} de ${cobertura.totalRodadas} avaliadas`
 }
+
+export type AgentType = 'assessor' | 'copiloto' | 'base_ativa'
+
+export type ColunaEntitlement = 'ag1_assessor' | 'ag2_copiloto' | 'ag3_ativador'
+
+export interface DefinicaoAgente {
+  agentType: AgentType
+  nome: string
+  descricao: string
+  rota: string
+  cor: string
+  colunaEntitlement: ColunaEntitlement
+  rotuloMetrica: string
+}
+
+export const AGENTES: DefinicaoAgente[] = [
+  {
+    agentType: 'assessor',
+    nome: 'Meu Assessor',
+    descricao:
+      'Mande os currículos pelo WhatsApp. O assessor entra em contato com cada candidato e faz os agendamentos.',
+    rota: '/agente-01',
+    cor: 'hsl(197 86% 58%)',
+    colunaEntitlement: 'ag1_assessor',
+    rotuloMetrica: 'em processo',
+  },
+  {
+    agentType: 'copiloto',
+    nome: 'Copiloto',
+    descricao: 'Transcrição de entrevistas, avaliação estruturada e leitura comportamental.',
+    rota: '/agente-02',
+    cor: 'hsl(154 60% 45%)',
+    colunaEntitlement: 'ag2_copiloto',
+    rotuloMetrica: 'entrevistas',
+  },
+  {
+    agentType: 'base_ativa',
+    nome: 'Base Ativa',
+    descricao:
+      'O candidato que não deu match hoje vale ouro amanhã. Banco de talentos com follow-up periódico.',
+    rota: '/agente-03',
+    cor: 'hsl(43 84% 55%)',
+    colunaEntitlement: 'ag3_ativador',
+    rotuloMetrica: 'talentos',
+  },
+]
+
+export function definicaoAgente(agentType: string): DefinicaoAgente | null {
+  return AGENTES.find((a) => a.agentType === agentType) ?? null
+}
+
+export function agenteAtivo(
+  entitlements: Record<string, unknown> | null | undefined,
+  agentType: string,
+): boolean {
+  if (!entitlements) return false
+  const def = definicaoAgente(agentType)
+  if (!def) return false
+  return entitlements[def.colunaEntitlement] === true
+}
