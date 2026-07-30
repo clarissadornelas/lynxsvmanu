@@ -86,10 +86,14 @@ export default function KanbanTab({
   const jobTitle = currentJob?.title || ''
   const totalRodadas = parseEtapas(currentJob?.etapas).length
 
+  const colunaDoCandidato = (c: Candidate): KanbanColumnId =>
+    deriveKanbanColumn(c.status, c.etapaAtual, totalRodadas, c.shortlistOrdem, c.faseSaida)
+
   const candidatosDaColuna = (colId: KanbanColumnId) =>
-    candidates.filter(
-      (c) => deriveKanbanColumn(c.status, c.etapaAtual, totalRodadas, c.shortlistOrdem) === colId,
-    )
+    candidates.filter((c) => c.situacao !== 'eliminado' && colunaDoCandidato(c) === colId)
+
+  const eliminadosDaColuna = (colId: KanbanColumnId) =>
+    candidates.filter((c) => c.situacao === 'eliminado' && colunaDoCandidato(c) === colId)
 
   const etapasDaVaga = parseEtapas(currentJob?.etapas)
 
@@ -357,7 +361,11 @@ export default function KanbanTab({
               <h3 className="font-medium text-sm text-slate-700" title={col.tooltip}>
                 {col.label}
               </h3>
-              <Badge variant="secondary" className={cn('text-xs', col.color)}>
+              <Badge
+                variant="secondary"
+                className={cn('text-xs', col.color)}
+                title="Ativos e pausados. Quem saiu do processo aparece no rodapé da coluna."
+              >
                 {candidatosDaColuna(col.id).length}
               </Badge>
             </div>
@@ -401,6 +409,8 @@ export default function KanbanTab({
                         className={cn(
                           'bg-white p-3 rounded-lg shadow-sm border border-slate-200 cursor-grab hover:border-indigo-300 drag-tilt',
                           draggedId === c.id ? 'opacity-50' : 'opacity-100',
+                          c.situacao === 'pausado' &&
+                            'border-l-[3px] border-l-orange-500 rounded-l-none',
                         )}
                       >
                         <div className="flex items-start gap-3">
@@ -431,8 +441,14 @@ export default function KanbanTab({
                                 </span>
                               )}
                             </div>
-                            {tempoParaExibir(c) && (
-                              <p className="text-xs mt-0.5 text-orange-600">{tempoParaExibir(c)}</p>
+                            {c.situacao === 'pausado' ? (
+                              <p className="text-xs mt-0.5 text-orange-600">pausado</p>
+                            ) : (
+                              tempoParaExibir(c) && (
+                                <p className="text-xs mt-0.5 text-orange-600">
+                                  {tempoParaExibir(c)}
+                                </p>
+                              )
                             )}
                           </div>
                         </div>
@@ -459,6 +475,11 @@ export default function KanbanTab({
                 )
               })}
             </div>
+            {eliminadosDaColuna(col.id).length > 0 && (
+              <div className="border-t border-slate-200 px-3 py-2 text-xs text-slate-400">
+                {eliminadosDaColuna(col.id).length} fora do processo
+              </div>
+            )}
           </div>
         ))}
       </div>

@@ -134,12 +134,14 @@ export function deriveKanbanColumn(
   etapaAtual: number | null | undefined,
   totalRodadas: number,
   shortlistOrdem?: number | null,
+  faseSaida?: string | null,
 ): KanbanColumnId {
-  if (status === 'contratado') return 'contratado'
+  const efetivo = faseSaida && faseSaida.length > 0 ? faseSaida : status
+  if (efetivo === 'contratado') return 'contratado'
   if (typeof shortlistOrdem === 'number' && shortlistOrdem >= 1) return 'shortlist_final'
-  if (status === 'novo') return 'a_triar'
-  if (status === 'shortlist') return 'longlist'
-  if (status === 'agendado' || status === 'entrevistado') {
+  if (efetivo === 'novo') return 'a_triar'
+  if (efetivo === 'shortlist') return 'longlist'
+  if (efetivo === 'agendado' || efetivo === 'entrevistado') {
     const etapa = typeof etapaAtual === 'number' && etapaAtual > 0 ? etapaAtual : 1
     if (totalRodadas > 0 && etapa > totalRodadas) return 'entrevistados'
     return 'em_entrevista'
