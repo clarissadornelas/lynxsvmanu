@@ -6,12 +6,12 @@ interface EditorRodadasProps {
   candidatosPorRodada?: Record<number, number>
 }
 
-export function EditorRodadas({ etapas, candidatosPorRodada }: EditorRodadasProps) {
+export default function EditorRodadas({ etapas, candidatosPorRodada }: EditorRodadasProps) {
   const rodadas = parseEtapas(etapas)
 
   if (rodadas.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-slate-400">
         Esta vaga ainda não tem rodadas de entrevista configuradas.
       </p>
     )
@@ -19,6 +19,10 @@ export function EditorRodadas({ etapas, candidatosPorRodada }: EditorRodadasProp
 
   return (
     <div className="space-y-3">
+      <p className="text-xs text-slate-500">
+        O nome é livre e aparece para o time. O tipo é fechado e define o roteiro padrão e o script
+        do Copiloto.
+      </p>
       {rodadas.map((rodada) => {
         const numCandidatos = candidatosPorRodada?.[rodada.n] ?? 0
         const temAgenda = rodada.agenda_id !== null
@@ -32,23 +36,17 @@ export function EditorRodadas({ etapas, candidatosPorRodada }: EditorRodadasProp
                 </span>
                 <div>
                   <p className="text-sm font-medium text-foreground">{rodada.nome}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-slate-500">
                     {rotuloTipoRodada(rodada.tipo)} · {rodada.duracao} min
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span
-                  className={
-                    temAgenda
-                      ? 'inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700'
-                      : 'inline-flex items-center rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600'
-                  }
-                >
-                  {temAgenda ? 'Agenda vinculada' : 'Sem agenda'}
+              <div className="flex flex-col items-end gap-1">
+                <span className="text-xs text-slate-400">
+                  {temAgenda ? 'agenda vinculada' : 'agenda interna'}
                 </span>
-                <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                  {numCandidatos} {numCandidatos === 1 ? 'candidato' : 'candidatos'}
+                <span className="text-xs text-slate-400">
+                  {numCandidatos === 0 ? 'ninguém aqui ainda' : `${numCandidatos} nesta rodada`}
                 </span>
               </div>
             </div>

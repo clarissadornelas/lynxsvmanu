@@ -1,6 +1,8 @@
 import { useParams, Link, useSearchParams } from 'react-router-dom'
 import useRecruitmentStore from '@/stores/useRecruitmentStore'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import EditorRodadas from '@/components/vaga/EditorRodadas'
+import { parseEtapas, deriveKanbanColumn } from '@/lib/funnel-phases'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, Share2, Settings2 } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
@@ -90,6 +92,31 @@ export default function JobDetails() {
             <h3 className="font-semibold text-lg mb-4">Requisitos mapeados pela IA</h3>
             <div className="whitespace-pre-wrap text-sm text-slate-600 font-mono bg-slate-50 p-4 rounded-lg border border-slate-100">
               {job.requirements}
+            </div>
+            <div className="border-t border-slate-200 mt-6 pt-6">
+              <h3 className="font-semibold text-lg mb-1">Rodadas de entrevista</h3>
+              <p className="text-sm text-slate-500 mb-4">
+                {parseEtapas(job.etapas).length === 1
+                  ? '1 rodada configurada'
+                  : `${parseEtapas(job.etapas).length} rodadas configuradas`}
+              </p>
+              <EditorRodadas
+                etapas={job.etapas}
+                candidatosPorRodada={jobCandidates.reduce<Record<number, number>>((acc, c) => {
+                  const total = parseEtapas(job.etapas).length
+                  const coluna = deriveKanbanColumn(
+                    c.status,
+                    (c as unknown as { etapaAtual?: number }).etapaAtual,
+                    total,
+                    (c as unknown as { shortlistOrdem?: number | null }).shortlistOrdem,
+                    (c as unknown as { faseSaida?: string | null }).faseSaida,
+                  )
+                  if (coluna !== 'em_entrevista') return acc
+                  const n = (c as unknown as { etapaAtual?: number }).etapaAtual ?? 1
+                  acc[n] = (acc[n] ?? 0) + 1
+                  return acc
+                }, {})}
+              />
             </div>
           </TabsContent>
         </div>
