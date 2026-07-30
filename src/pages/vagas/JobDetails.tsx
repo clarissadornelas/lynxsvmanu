@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ChevronLeft, Share2, Settings2 } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import RankingTab from './components/RankingTab'
+import ShortlistTab from './components/ShortlistTab'
 import KanbanTab from './components/KanbanTab'
 
 export default function JobDetails() {
@@ -83,7 +84,7 @@ export default function JobDetails() {
             />
           </TabsContent>
           <TabsContent value="decisao" className="h-full m-0 overflow-y-auto">
-            <RankingTab candidates={jobCandidates} jobId={job.id} />
+            <ShortlistTab candidates={jobCandidates} jobId={job.id} />
           </TabsContent>
           <TabsContent
             value="info"
