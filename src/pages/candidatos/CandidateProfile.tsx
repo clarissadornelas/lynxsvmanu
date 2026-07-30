@@ -448,6 +448,17 @@ export default function CandidateProfile() {
                   Copilot de Entrevista
                 </Button>
               </Link>
+              {completedEntrevista && !completedEntrevista.avaliada_em && (
+                <Link to={`/avaliar/${completedEntrevista.id}`}>
+                  <Button
+                    className="w-full justify-start bg-emerald-50 text-emerald-700 hover:bg-emerald-100 mt-2"
+                    variant="secondary"
+                  >
+                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                    Avaliar entrevista
+                  </Button>
+                </Link>
+              )}
               <div className="pt-2">
                 <AddToBaseDialog
                   candidatoId={candidate.id}
