@@ -12,7 +12,7 @@ import KanbanTab from './components/KanbanTab'
 export default function JobDetails() {
   const { id } = useParams<{ id: string }>()
   const [searchParams] = useSearchParams()
-  const { jobs, candidates } = useRecruitmentStore()
+  const { jobs, candidates, reload } = useRecruitmentStore()
   const initialTab = searchParams.get('tab') === 'decisao' ? 'decisao' : 'kanban'
 
   const job = jobs.find((j) => j.id === id)
@@ -101,6 +101,8 @@ export default function JobDetails() {
                   : `${parseEtapas(job.etapas).length} rodadas configuradas`}
               </p>
               <EditorRodadas
+                vagaId={job.id}
+                onSalvo={reload}
                 etapas={job.etapas}
                 candidatosPorRodada={jobCandidates.reduce<Record<number, number>>((acc, c) => {
                   const total = parseEtapas(job.etapas).length

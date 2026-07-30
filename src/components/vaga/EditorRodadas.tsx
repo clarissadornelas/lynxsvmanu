@@ -44,7 +44,16 @@ export default function EditorRodadas({
   }, [etapas])
 
   const alterar = (n: number, campo: keyof EtapaVaga, valor: string) => {
-    setRodadas((prev) => prev.map((r) => (r.n === n ? { ...r, [campo]: valor } : r)))
+    setRodadas((prev) =>
+      prev.map((r) => {
+        if (r.n !== n) return r
+        if (campo === 'duracao') {
+          const num = Number(valor)
+          return { ...r, duracao: Number.isFinite(num) && num >= 5 ? num : 5 }
+        }
+        return { ...r, [campo]: valor }
+      }),
+    )
     setSujo(true)
   }
 
@@ -64,6 +73,7 @@ export default function EditorRodadas({
   }
 
   const remover = (n: number) => {
+    if ((candidatosPorRodada?.[n] ?? 0) > 0) return
     setRodadas((prev) => prev.filter((r) => r.n !== n).map((r, i) => ({ ...r, n: i + 1 })))
     setSujo(true)
   }
@@ -148,13 +158,7 @@ export default function EditorRodadas({
                       <Input
                         type="number"
                         value={rodada.duracao}
-                        onChange={(e) =>
-                          alterar(
-                            rodada.n,
-                            'duracao',
-                            String(Math.max(5, Number(e.target.value) || 60)),
-                          )
-                        }
+                        onChange={(e) => alterar(rodada.n, 'duracao', e.target.value)}
                         className="h-8 w-[74px] text-xs"
                         disabled={somenteLeitura}
                       />
