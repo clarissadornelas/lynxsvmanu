@@ -26,7 +26,7 @@ export const LANES: Lane[] = [
     statuses: ['novo', 'shortlist', 'agendado'],
     color: '#0F6E56',
   },
-  { key: 'copiloto', label: 'Copiloto', statuses: ['em_teste', 'entrevistado'], color: '#534AB7' },
+  { key: 'copiloto', label: 'Copiloto', statuses: ['entrevistado'], color: '#534AB7' },
   { key: 'base_viva', label: 'Base Viva', statuses: ['contratado'], color: '#BA7517' },
   { key: 'saidas', label: 'Saídas', statuses: ['descartado', 'reprovado'], color: '#8A8980' },
 ]

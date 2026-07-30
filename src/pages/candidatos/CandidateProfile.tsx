@@ -32,6 +32,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { AddToBaseDialog } from './components/AddToBaseDialog'
 import { DangerZone } from '@/components/DangerZone'
+import { rotuloStatus, rotuloEvento } from '@/lib/funnel-phases'
 
 interface CandidatoEvento {
   id: string
@@ -274,8 +275,8 @@ export default function CandidateProfile() {
                 />
               </div>
               <h2 className="font-semibold text-lg">{candidate.nome}</h2>
-              <Badge variant="outline" className="mb-4 capitalize">
-                {candidate.status}
+              <Badge variant="outline" className="mb-4">
+                {rotuloStatus(candidate.status)}
               </Badge>
 
               <div className="space-y-3 text-sm text-left bg-slate-50 p-4 rounded-xl">
@@ -542,8 +543,8 @@ export default function CandidateProfile() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-medium text-slate-900 capitalize">
-                            {evento.tipo || 'Evento'}
+                          <span className="text-sm font-medium text-slate-900">
+                            {rotuloEvento(evento.tipo)}
                           </span>
                           <span className="text-xs text-slate-400 font-mono shrink-0">
                             {format(new Date(evento.criado_em), "dd/MM/yyyy 'às' HH:mm", {
@@ -553,9 +554,9 @@ export default function CandidateProfile() {
                         </div>
                         {(evento.de || evento.para) && (
                           <p className="text-sm text-slate-600 mt-1">
-                            {evento.tipo || 'Evento'}: {evento.de || '—'} -&gt; {evento.para || '—'}
+                            {rotuloStatus(evento.de)} para {rotuloStatus(evento.para)}
                           </p>
-                        )}
+                        )}{' '}
                         {evento.agente && (
                           <p className="text-xs text-slate-400 mt-1">({evento.agente})</p>
                         )}

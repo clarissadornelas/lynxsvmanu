@@ -204,6 +204,44 @@ export const COPILOT_STAGES: CopilotStage[] = [
   },
 ]
 
+const STATUS_LABELS: Record<string, string> = {
+  novo: 'A Triar',
+  shortlist: 'Longlist',
+  agendado: 'Agendado',
+  em_teste: 'Em experiência',
+  entrevistado: 'Entrevistado',
+  contratado: 'Contratado',
+  descartado: 'Descartado',
+  reprovado: 'Reprovado',
+  inativo: 'Inativo',
+}
+
+export function rotuloStatus(status: string | null | undefined): string {
+  if (!status) return '—'
+  return STATUS_LABELS[status] ?? status
+}
+
+const EVENTO_LABELS: Record<string, string> = {
+  mudanca_status: 'Mudança de fase',
+  mudanca_fase: 'Mudança de fase',
+  status_alterado: 'Mudança de fase',
+  contato_inicial: 'Contato inicial',
+  rodada_criada: 'Rodada criada',
+  conversa_encerrada: 'Conversa encerrada',
+  criacao: 'Criação',
+  mensagem_enviada: 'Mensagem enviada',
+  mensagem_recebida: 'Mensagem recebida',
+  agendamento: 'Agendamento',
+  entrevista: 'Entrevista',
+  follow_up: 'Follow-up',
+  note_added: 'Nota adicionada',
+}
+
+export function rotuloEvento(tipo: string | null | undefined): string {
+  if (!tipo) return 'Evento'
+  return EVENTO_LABELS[tipo] ?? tipo.replace(/_/g, ' ')
+}
+
 export function deriveCopilotStage(
   interview: any | null | undefined,
   activeAppointment: any | null | undefined,

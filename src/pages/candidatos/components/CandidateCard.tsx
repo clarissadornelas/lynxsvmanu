@@ -94,7 +94,7 @@ export function CandidateCard({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="novo">Novo</SelectItem>
-                <SelectItem value="shortlist">Shortlist</SelectItem>
+                <SelectItem value="shortlist">Longlist</SelectItem>
                 <SelectItem value="agendado">Agendado</SelectItem>
                 <SelectItem value="entrevistado">Entrevistado</SelectItem>
                 <SelectItem value="aprovado">Aprovado</SelectItem>

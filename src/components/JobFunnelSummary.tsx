@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 
 const FUNNEL_STATUSES = [
   { key: 'novo', label: 'Novo', className: 'bg-[#C4E2D7] text-emerald-900' },
-  { key: 'shortlist', label: 'Shortlist', className: 'bg-[#5DCAA5] text-white' },
+  { key: 'shortlist', label: 'Longlist', className: 'bg-[#5DCAA5] text-white' },
   { key: 'agendado', label: 'Agendado', className: 'bg-[#0F6E56] text-white' },
   { key: 'em_teste', label: 'Em teste', className: 'bg-[#B6B0EE] text-indigo-900' },
   { key: 'entrevistado', label: 'Entrevistado', className: 'bg-[#534AB7] text-white' },
