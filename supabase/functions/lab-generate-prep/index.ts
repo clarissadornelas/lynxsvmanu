@@ -1,4 +1,3 @@
-// LAB DRY-RUN: esta função não grava no banco.
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
@@ -15,6 +14,7 @@ Deno.serve(async (req) => {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
 
     if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Missing env vars: SUPABASE_URL or SUPABASE_ANON_KEY')
       return new Response(JSON.stringify({ error: 'Configuração do servidor incompleta.' }), {
         status: 500,
         headers: jsonHeaders,
@@ -45,17 +45,17 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json()
-    const { vaga_id, candidato_id, extra_contexto } = body
+    const { vaga_id, candidato_id } = body
 
     if (!vaga_id || !candidato_id) {
-      return new Response(JSON.stringify({ error: 'Parâmetros obrigatórios ausentes.' }), {
-        status: 400,
-        headers: jsonHeaders,
-      })
+      return new Response(
+        JSON.stringify({ error: 'Parâmetros obrigatórios ausentes: vaga_id e candidato_id.' }),
+        { status: 400, headers: jsonHeaders },
+      )
     }
 
-    // LAB DRY-RUN: only select, no writes
     const { data: vaga } = await supabase.from('vagas').select('*').eq('id', vaga_id).maybeSingle()
+
     const { data: candidato } = await supabase
       .from('candidatos')
       .select('*')
@@ -79,15 +79,28 @@ Deno.serve(async (req) => {
     let apiKey = ''
     if (keyData?.api_key_encrypted) {
       if (!hasEncryptionSecret()) {
-        console.error('ENCRYPTION_SECRET and SUPABASE_SERVICE_ROLE_KEY not configured')
-      } else {
-        try {
-          apiKey = await decrypt(keyData.api_key_encrypted)
-        } catch (e) {
-          console.error('Decrypt error:', e)
-        }
+        console.error('ENCRYPTION_SECRET is not configured on the server')
+        return new Response(
+          JSON.stringify({
+            error: 'Configuração de segurança ausente: ENCRYPTION_SECRET não definido no servidor.',
+          }),
+          { status: 500, headers: jsonHeaders },
+        )
+      }
+      try {
+        apiKey = await decrypt(keyData.api_key_encrypted)
+      } catch (e) {
+        console.error('Decrypt error:', e)
+        return new Response(
+          JSON.stringify({
+            error:
+              'Falha ao descriptografar a chave de IA. Verifique a configuração do ENCRYPTION_SECRET.',
+          }),
+          { status: 500, headers: jsonHeaders },
+        )
       }
     }
+
     if (!apiKey) {
       return new Response(
         JSON.stringify({
@@ -123,10 +136,6 @@ Deno.serve(async (req) => {
       if (dados) resumoAnalitico = JSON.stringify(dados)
     } catch {}
 
-    const extraCtx = extra_contexto
-      ? `\n\nContexto adicional fornecido pelo recrutador para este teste:\n${extra_contexto}`
-      : ''
-
     const openai = new OpenAI({ apiKey })
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 25000)
@@ -161,8 +170,7 @@ Output ONLY a valid JSON object with this schema:
 }
 
 Generate 3-5 categories with 1-3 questions each. All content must be in Brazilian Portuguese.` +
-                criteriaBlock +
-                extraCtx,
+                criteriaBlock,
             },
             {
               role: 'user',
@@ -191,14 +199,12 @@ Generate 3-5 categories with 1-3 questions each. All content must be in Brazilia
       )
     }
 
-    // LAB DRY-RUN: return result without any database write
     return new Response(
       JSON.stringify({
         dry_run: true,
-        message: 'Resultado simulado — nada foi gravado no banco de dados.',
-        briefing: roteiro.briefing || '',
-        categories: roteiro.categories || [],
-        red_flags: roteiro.red_flags || [],
+        message:
+          'Roteiro gerado em modo laboratório (dry-run). Nenhuma alteração foi salva no banco.',
+        ...roteiro,
       }),
       { headers: jsonHeaders },
     )

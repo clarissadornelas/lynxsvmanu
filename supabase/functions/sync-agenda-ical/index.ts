@@ -1,81 +1,86 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
-import { corsHeaders } from '../_shared/cors.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { corsHeaders } from '../_shared/cors.ts'
 
-interface ParsedEvent {
-  start: string
-  end: string
-  summary: string | null
+function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
+}
+
+function parseICalDate(raw: string): string {
+  let val = raw.trim()
+
+  if (/^\d{8}$/.test(val)) {
+    const y = val.substring(0, 4)
+    const m = val.substring(4, 6)
+    const d = val.substring(6, 8)
+    return `${y}-${m}-${d}T00:00:00Z`
+  }
+
+  if (val.endsWith('Z')) {
+    val = val.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/, '$1-$2-$3T$4:$5:$6Z')
+    return val
+  }
+
+  val = val.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6')
+  return val
 }
 
 function unescapeICal(text: string): string {
-  return text.replace(/\\n/g, '\n').replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\\\/g, '\\')
+  return text
+    .replace(/\\n/gi, '\n')
+    .replace(/\\,/g, ',')
+    .replace(/\\;/g, ';')
+    .replace(/\\\\/g, '\\')
 }
 
-function parseICalDate(value: string): string {
-  const dateOnlyMatch = /^(\d{4})(\d{2})(\d{2})$/.exec(value)
-  if (dateOnlyMatch) {
-    return `${dateOnlyMatch[1]}-${dateOnlyMatch[2]}-${dateOnlyMatch[3]}T00:00:00Z`
-  }
-
-  const utcMatch = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/.exec(value)
-  if (utcMatch) {
-    return `${utcMatch[1]}-${utcMatch[2]}-${utcMatch[3]}T${utcMatch[4]}:${utcMatch[5]}:${utcMatch[6]}Z`
-  }
-
-  const floatingMatch = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})$/.exec(value)
-  if (floatingMatch) {
-    return `${floatingMatch[1]}-${floatingMatch[2]}-${floatingMatch[3]}T${floatingMatch[4]}:${floatingMatch[5]}:${floatingMatch[6]}Z`
-  }
-
-  return value
+interface ParsedEvent {
+  titulo: string
+  inicio: string
+  fim: string
 }
 
 function parseICal(icalText: string): ParsedEvent[] {
-  const unfolded = icalText.replace(/\r?\n[ \t]/g, '')
+  const unfolded = icalText.replace(/\r\n[ \t]/g, '').replace(/\n[ \t]/g, '')
   const lines = unfolded.split(/\r?\n/)
 
   const events: ParsedEvent[] = []
-  let inEvent = false
-  let currentStart: string | undefined
-  let currentEnd: string | undefined
-  let currentSummary: string | null = null
+  let current: Partial<ParsedEvent> | null = null
 
   for (const line of lines) {
-    if (line === 'BEGIN:VEVENT') {
-      inEvent = true
-      currentStart = undefined
-      currentEnd = undefined
-      currentSummary = null
-      continue
-    }
-    if (line === 'END:VEVENT') {
-      if (inEvent && currentStart && currentEnd) {
+    const trimmed = line.trim()
+    if (trimmed === 'BEGIN:VEVENT') {
+      current = {}
+    } else if (trimmed === 'END:VEVENT') {
+      if (current && current.inicio && current.fim) {
         events.push({
-          start: currentStart,
-          end: currentEnd,
-          summary: currentSummary,
+          titulo: current.titulo ?? 'Sem título',
+          inicio: current.inicio,
+          fim: current.fim,
         })
       }
-      inEvent = false
-      continue
-    }
-    if (!inEvent) continue
-
-    const colonIdx = line.indexOf(':')
-    if (colonIdx === -1) continue
-    const propertyPart = line.substring(0, colonIdx)
-    const value = line.substring(colonIdx + 1)
-
-    const semiIdx = propertyPart.indexOf(';')
-    const propertyName = semiIdx === -1 ? propertyPart : propertyPart.substring(0, semiIdx)
-
-    if (propertyName === 'DTSTART') {
-      currentStart = parseICalDate(value)
-    } else if (propertyName === 'DTEND') {
-      currentEnd = parseICalDate(value)
-    } else if (propertyName === 'SUMMARY') {
-      currentSummary = unescapeICal(value)
+      current = null
+    } else if (current) {
+      if (trimmed.startsWith('SUMMARY:')) {
+        current.titulo = unescapeICal(trimmed.substring(8))
+      } else if (trimmed.startsWith('SUMMARY;')) {
+        const colonIdx = trimmed.indexOf(':')
+        if (colonIdx !== -1) {
+          current.titulo = unescapeICal(trimmed.substring(colonIdx + 1))
+        }
+      } else if (trimmed.startsWith('DTSTART')) {
+        const colonIdx = trimmed.indexOf(':')
+        if (colonIdx !== -1) {
+          current.inicio = parseICalDate(trimmed.substring(colonIdx + 1))
+        }
+      } else if (trimmed.startsWith('DTEND')) {
+        const colonIdx = trimmed.indexOf(':')
+        if (colonIdx !== -1) {
+          current.fim = parseICalDate(trimmed.substring(colonIdx + 1))
+        }
+      }
     }
   }
 
@@ -89,12 +94,18 @@ Deno.serve(async (req: Request) => {
 
   try {
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) throw new Error('Missing Authorization header')
+    if (!authHeader) {
+      return jsonResponse({ error: 'Missing Authorization header' }, 401)
+    }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    if (!supabaseUrl || !serviceRoleKey) {
+      return jsonResponse({ error: 'Missing server configuration' }, 500)
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey, {
       global: { headers: { Authorization: authHeader } },
     })
 
@@ -102,140 +113,109 @@ Deno.serve(async (req: Request) => {
       data: { user },
       error: userError,
     } = await supabase.auth.getUser()
-    if (userError || !user) throw new Error('Unauthorized')
+    if (userError || !user) {
+      return jsonResponse({ error: 'Unauthorized' }, 401)
+    }
 
-    const body = await req.json()
-    const agendaExternaId: string | undefined = body.agenda_externa_id
+    const body = await req.json().catch(() => null)
+    if (!body) {
+      return jsonResponse({ error: 'Invalid JSON body' }, 400)
+    }
 
-    if (!agendaExternaId) {
-      return new Response(JSON.stringify({ error: 'agenda_externa_id is required' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      })
+    const { agenda_externa_id, ical_url } = body
+
+    if (!agenda_externa_id) {
+      return jsonResponse({ error: 'agenda_externa_id is required' }, 400)
     }
 
     const { data: agenda, error: agendaError } = await supabase
       .from('agendas_externas')
-      .select('*')
-      .eq('id', agendaExternaId)
+      .select('ical_url, tenant_id')
+      .eq('id', agenda_externa_id)
       .single()
 
     if (agendaError || !agenda) {
-      return new Response(JSON.stringify({ error: 'Agenda externa not found' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 404,
-      })
+      return jsonResponse({ error: 'Agenda not found' }, 404)
     }
 
-    if (!agenda.ical_url) {
-      return new Response(JSON.stringify({ error: 'No iCal URL configured for this agenda' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      })
+    const url = ical_url || agenda.ical_url
+    if (!url) {
+      return jsonResponse({ error: 'No iCal URL available for this agenda' }, 400)
     }
+
+    const tenantId = agenda.tenant_id
 
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 15000)
+    const timeoutId = setTimeout(() => controller.abort(), 15000)
 
-    let icalResponse: Response
+    let icalRes: Response
     try {
-      icalResponse = await fetch(agenda.ical_url, {
+      icalRes = await fetch(url, {
+        headers: {
+          'User-Agent': 'Lynxs-Agenda-Sync/1.0',
+          Accept: 'text/calendar, application/calendar, text/plain, */*',
+        },
         signal: controller.signal,
-        headers: { Accept: 'text/calendar, text/plain, */*' },
       })
-    } catch (fetchErr: any) {
-      clearTimeout(timeout)
-      const isTimeout = fetchErr.name === 'AbortError'
-      return new Response(
-        JSON.stringify({
-          error: isTimeout
-            ? 'Network timeout while fetching iCal URL (15s)'
-            : `Failed to fetch iCal URL: ${fetchErr.message}`,
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 502 },
-      )
+    } catch (fetchErr) {
+      clearTimeout(timeoutId)
+      const msg = fetchErr instanceof Error ? fetchErr.message : 'Unknown fetch error'
+      return jsonResponse({ error: `Failed to fetch iCal feed: ${msg}` }, 502)
     }
-    clearTimeout(timeout)
+    clearTimeout(timeoutId)
 
-    if (!icalResponse.ok) {
-      return new Response(
-        JSON.stringify({
-          error: `iCal URL returned status ${icalResponse.status}: ${icalResponse.statusText}`,
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 502 },
-      )
+    if (!icalRes.ok) {
+      return jsonResponse({ error: `Failed to fetch iCal feed: HTTP ${icalRes.status}` }, 502)
     }
 
-    const icalText = await icalResponse.text()
+    const icalText = await icalRes.text()
     const parsedEvents = parseICal(icalText)
 
-    console.log(
-      `[sync-agenda-ical] Parsed ${parsedEvents.length} events from iCal for agenda ${agendaExternaId}`,
-    )
-
-    const { error: deleteError, count: deletedCount } = await supabase
+    const { count: deletedCount, error: deleteError } = await supabase
       .from('eventos_agenda_externa')
       .delete({ count: 'exact' })
-      .eq('agenda_externa_id', agendaExternaId)
+      .eq('agenda_externa_id', agenda_externa_id)
 
     if (deleteError) {
-      console.error('[sync-agenda-ical] Error deleting old events:', deleteError.message)
-      return new Response(
-        JSON.stringify({ error: `Failed to clear old events: ${deleteError.message}` }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 },
-      )
+      return jsonResponse({ error: 'Failed to delete old events' }, 500)
     }
-
-    console.log(`[sync-agenda-ical] Deleted ${deletedCount ?? 0} old cached events`)
 
     if (parsedEvents.length > 0) {
-      const rowsToInsert = parsedEvents.map((evt) => ({
-        agenda_externa_id: agendaExternaId,
-        tenant_id: agenda.tenant_id,
-        inicio: evt.start,
-        fim: evt.end,
-        titulo: evt.summary,
+      const rows = parsedEvents.map((e) => ({
+        agenda_externa_id,
+        tenant_id: tenantId,
+        titulo: e.titulo,
+        inicio: e.inicio,
+        fim: e.fim,
       }))
 
-      const { error: insertError } = await supabase
-        .from('eventos_agenda_externa')
-        .insert(rowsToInsert)
+      const { error: insertError } = await supabase.from('eventos_agenda_externa').insert(rows)
 
       if (insertError) {
-        console.error('[sync-agenda-ical] Error inserting events:', insertError.message)
-        return new Response(
-          JSON.stringify({ error: `Failed to insert events: ${insertError.message}` }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 },
-        )
+        return jsonResponse({ error: 'Failed to insert events' }, 500)
       }
-
-      console.log(`[sync-agenda-ical] Inserted ${parsedEvents.length} new events`)
     }
+
+    const now = new Date().toISOString()
 
     const { error: updateError } = await supabase
       .from('agendas_externas')
-      .update({ ultima_sincronizacao: new Date().toISOString() })
-      .eq('id', agendaExternaId)
+      .update({ ultima_sincronizacao: now })
+      .eq('id', agenda_externa_id)
 
     if (updateError) {
-      console.error('[sync-agenda-ical] Error updating ultima_sincronizacao:', updateError.message)
+      return jsonResponse({ error: 'Failed to update last sync timestamp' }, 500)
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        events_synced: parsedEvents.length,
-        events_deleted: deletedCount ?? 0,
-        agenda_externa_id: agendaExternaId,
-        ultima_sincronizacao: new Date().toISOString(),
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 },
-    )
-  } catch (error: any) {
-    console.error('[sync-agenda-ical] Unhandled error:', error.message)
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
+    return jsonResponse({
+      success: true,
+      events_synced: parsedEvents.length,
+      events_deleted: deletedCount ?? 0,
+      agenda_externa_id,
+      ultima_sincronizacao: now,
     })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    return jsonResponse({ error: `Internal error: ${message}` }, 500)
   }
 })

@@ -49,6 +49,12 @@ function formatShortDate(dateStr: string): string {
   return `${day} ${months[date.getMonth()]}`
 }
 
+interface ParecerPendente {
+  id: string
+  candidato_nome: string
+  avaliada_em: string | null
+}
+
 export default function InterviewSetup() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -62,6 +68,8 @@ export default function InterviewSetup() {
   const [showFullPool, setShowFullPool] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [preselectedCandidatoId, setPreselectedCandidatoId] = useState<string | null>(null)
+  const [filaAvaliar, setFilaAvaliar] = useState<ParecerPendente[]>([])
+  const [filaParecer, setFilaParecer] = useState<ParecerPendente[]>([])
 
   useEffect(() => {
     if (!tenantId) return
@@ -108,6 +116,51 @@ export default function InterviewSetup() {
       setShowFullPool(true)
     }
   }, [vagas, selectedVagaId, searchParams])
+
+  useEffect(() => {
+    if (!tenantId) return
+    async function loadPareceres() {
+      const { data: ents } = await supabase
+        .from('entrevistas')
+        .select('id, candidato_id, avaliada_em, status')
+        .eq('tenant_id', tenantId)
+        .not('realizada_em', 'is', null)
+        .order('criado_em', { ascending: false })
+        .limit(30)
+
+      if (!ents || ents.length === 0) {
+        setFilaAvaliar([])
+        setFilaParecer([])
+        return
+      }
+
+      const candIds = [...new Set(ents.map((e) => e.candidato_id))]
+      const { data: cands } = await supabase.from('candidatos').select('id, nome').in('id', candIds)
+
+      const candMap = new Map<string, string>()
+      cands?.forEach((c) => candMap.set(c.id, c.nome || 'Candidato'))
+
+      const avaliar: ParecerPendente[] = []
+      const parecer: ParecerPendente[] = []
+
+      for (const ent of ents) {
+        const item: ParecerPendente = {
+          id: ent.id,
+          candidato_nome: candMap.get(ent.candidato_id) || 'Candidato',
+          avaliada_em: ent.avaliada_em,
+        }
+        if (!ent.avaliada_em) {
+          avaliar.push(item)
+        } else if (ent.status !== 'analisada' && ent.status !== 'entregue') {
+          parecer.push(item)
+        }
+      }
+
+      setFilaAvaliar(avaliar.slice(0, 5))
+      setFilaParecer(parecer.slice(0, 5))
+    }
+    loadPareceres()
+  }, [tenantId])
 
   const proximasEntrevistas = useMemo(() => {
     return agendamentos
@@ -297,6 +350,45 @@ export default function InterviewSetup() {
             )}
           </CardContent>
         </Card>
+
+        {/* Pareceres pendentes */}
+        {filaAvaliar.length > 0 || filaParecer.length > 0 ? (
+          <Card className="border-slate-200">
+            <CardContent className="p-4 space-y-3">
+              <p className="text-sm font-semibold text-slate-700">Pareceres pendentes</p>
+              {filaAvaliar.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm text-slate-900 truncate">{item.candidato_nome}</p>
+                    <p className="text-xs text-amber-700">
+                      Entrevista realizada, aguardando sua avaliação
+                    </p>
+                  </div>
+                  <Link
+                    to={`/avaliar/${item.id}`}
+                    className="text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-md px-3 py-1 shrink-0"
+                  >
+                    Avaliar
+                  </Link>
+                </div>
+              ))}
+              {filaParecer.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm text-slate-900 truncate">{item.candidato_nome}</p>
+                    <p className="text-xs text-slate-500">Avaliada, aguardando parecer da IA</p>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        ) : null}
 
         {/* Pipeline Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

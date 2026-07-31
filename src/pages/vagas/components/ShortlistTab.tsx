@@ -3,11 +3,21 @@ import type { Candidate } from '@/stores/useRecruitmentStore'
 import useRecruitmentStore from '@/stores/useRecruitmentStore'
 import { supabase } from '@/lib/supabase/client'
 import { parseAvaliacao, notaECobertura } from '@/lib/funnel-phases'
+import { eliminarCandidato } from '@/lib/saida'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
-import { GripVertical, Loader2, Save, Trophy } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Checkbox } from '@/components/ui/checkbox'
+import { GripVertical, Loader2, Save, Trophy, UserCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { getInitials } from '@/lib/avatar-utils'
@@ -57,6 +67,9 @@ export default function ShortlistTab({
   const [saving, setSaving] = useState(false)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const [contratando, setContratando] = useState<Candidate | null>(null)
+  const [fecharVaga, setFecharVaga] = useState(false)
+  const [executando, setExecutando] = useState(false)
   const { reload } = useRecruitmentStore()
 
   const finalistas = useMemo(
@@ -129,6 +142,81 @@ export default function ShortlistTab({
       toast.error('Erro ao salvar ordem: ' + (err?.message || 'erro desconhecido'))
     }
     setSaving(false)
+  }
+
+  const executarContratacao = async () => {
+    if (!contratando || executando) return
+    setExecutando(true)
+    try {
+      const agora = new Date().toISOString()
+      const prevStatus = contratando.status
+
+      const { error: updErr } = await supabase
+        .from('candidatos')
+        .update({
+          status: 'contratado',
+          contratado_em: agora,
+          data_contratacao: agora,
+        })
+        .eq('id', contratando.id)
+      if (updErr) throw updErr
+
+      const { error: evtErr } = await supabase.from('candidato_eventos').insert({
+        candidato_id: contratando.id,
+        vaga_id: jobId,
+        tenant_id: contratando.tenantId,
+        tipo: 'mudanca_fase',
+        de: prevStatus,
+        para: 'contratado',
+        agente: null,
+        ator: 'decisao_shortlist',
+      })
+      if (evtErr) throw evtErr
+
+      const demais = ordered.filter((c) => c.id !== contratando.id)
+      let baseAtivaErrors = 0
+      for (const c of demais) {
+        const result = await eliminarCandidato({
+          candidatoId: c.id,
+          motivo: 'finalista_nao_escolhido',
+          statusAtual: c.status,
+          vagaId: jobId,
+          tenantId: c.tenantId,
+          ator: 'decisao_shortlist',
+        })
+        if (!result.success) {
+          toast.error(`Erro ao eliminar candidato ${c.name}.`)
+        } else if (result.baseAtivaError) {
+          baseAtivaErrors++
+        }
+      }
+
+      if (fecharVaga && jobId) {
+        const { error: vagaErr } = await supabase
+          .from('vagas')
+          .update({ status: 'fechada' })
+          .eq('id', jobId)
+        if (vagaErr) {
+          toast.warning('Candidato contratado, mas não foi possível fechar a vaga.')
+        }
+      }
+
+      toast.success(`${contratando.name} foi contratado!`)
+      if (baseAtivaErrors > 0) {
+        toast.warning(`${baseAtivaErrors} candidato(s) não puderam ser adicionados à Base Ativa.`)
+      }
+      if (demais.length > 0) {
+        toast.info(`${demais.length} finalista(s) eliminado(s) automaticamente.`)
+      }
+
+      setContratando(null)
+      setFecharVaga(false)
+      await reload()
+    } catch (err: any) {
+      toast.error('Erro ao contratar: ' + (err?.message || 'erro desconhecido'))
+    } finally {
+      setExecutando(false)
+    }
   }
 
   if (loading) {
@@ -222,12 +310,90 @@ export default function ShortlistTab({
                   <span className={cn('text-xs', lowCob ? 'text-amber-700' : 'text-slate-500')}>
                     {resp} de {fech}
                   </span>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                    onClick={() => {
+                      setContratando(c)
+                      setFecharVaga(false)
+                    }}
+                  >
+                    <UserCheck className="w-3.5 h-3.5 mr-1" />
+                    Contratar
+                  </Button>
                 </div>
               </CardContent>
             </Card>
           )
         })}
       </div>
+
+      <Dialog
+        open={!!contratando}
+        onOpenChange={(open) => {
+          if (!open && !executando) {
+            setContratando(null)
+            setFecharVaga(false)
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar contratação</DialogTitle>
+            <DialogDescription>
+              Você está prestes a contratar <strong>{contratando?.name}</strong>
+              {ordered.length > 1 && (
+                <>
+                  {' '}
+                  e eliminar automaticamente os demais{' '}
+                  {ordered.filter((c) => c.id !== contratando?.id).length} finalista(s) com motivo
+                  "Finalista não escolhido".
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2 py-2">
+            <Checkbox
+              id="fechar-vaga"
+              checked={fecharVaga}
+              onCheckedChange={(checked) => setFecharVaga(checked === true)}
+            />
+            <label htmlFor="fechar-vaga" className="text-sm cursor-pointer">
+              Fechar a vaga junto
+            </label>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setContratando(null)
+                setFecharVaga(false)
+              }}
+              disabled={executando}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={executarContratacao}
+              disabled={executando}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {executando ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <UserCheck className="w-4 h-4 mr-2" />
+                  Confirmar contratação
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

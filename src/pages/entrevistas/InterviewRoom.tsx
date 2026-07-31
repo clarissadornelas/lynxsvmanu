@@ -312,12 +312,11 @@ export default function InterviewRoom() {
       }
 
       const transcricaoPreview = transcript.substring(0, 1000)
-      const parecerPreview = transcript.substring(0, 2000)
 
       if (agendamentoId) {
         const { error: agUpdateError } = await supabase
           .from('agendamentos')
-          .update({ status: 'realizada', parecer: parecerPreview })
+          .update({ status: 'realizada' })
           .eq('id', agendamentoId)
 
         if (agUpdateError) {

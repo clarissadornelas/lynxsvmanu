@@ -6,12 +6,19 @@ import { encrypt, hasEncryptionSecret, getEncryptionSecretStatus } from '../_sha
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
 
   try {
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) throw new Error('Missing Authorization header')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing Authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       global: { headers: { Authorization: authHeader } },
@@ -21,17 +28,65 @@ Deno.serve(async (req) => {
       data: { user },
       error: userError,
     } = await supabase.auth.getUser()
-    if (userError || !user) throw new Error('Unauthorized')
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const body = await req.json().catch(() => null)
+    if (!body) {
+      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const { tenant_id, provider, api_key } = body
+
+    if (!tenant_id || !provider || !api_key) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: tenant_id, provider, api_key' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    const { data: usuario, error: usuarioError } = await supabase
+      .from('usuarios')
+      .select('id, papel')
+      .eq('email', user.email!)
+      .eq('tenant_id', tenant_id)
+      .eq('ativo', true)
+      .maybeSingle()
+
+    if (usuarioError) {
+      return new Response(
+        JSON.stringify({ error: 'Erro ao verificar vínculo: ' + usuarioError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    if (!usuario) {
+      return new Response(JSON.stringify({ error: 'Sem vínculo ativo com esta empresa' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (usuario.papel !== 'admin') {
+      return new Response(
+        JSON.stringify({ error: 'Apenas administradores podem salvar chaves de API' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
 
     if (!hasEncryptionSecret()) {
       const secretStatus = getEncryptionSecretStatus()
       return new Response(
         JSON.stringify({
           error: 'Erro de configuração: Segredo de criptografia não encontrado no servidor.',
-          diagnostico: {
-            ...secretStatus,
-            hint: 'Configure a variável ENCRYPTION_SECRET nas configurações do Supabase Edge Functions.',
-          },
+          diagnostico: secretStatus,
         }),
         {
           status: 200,
@@ -40,68 +95,36 @@ Deno.serve(async (req) => {
       )
     }
 
-    const { tenantId, provider, apiKey } = await req.json()
+    const encryptedKey = await encrypt(api_key)
 
-    if (!tenantId) {
-      return new Response(JSON.stringify({ error: 'Empresa não informada' }), {
-        status: 400,
+    const { data, error } = await supabase
+      .from('ai_provider_keys')
+      .upsert(
+        {
+          user_id: user.id,
+          tenant_id,
+          provider,
+          api_key_encrypted: encryptedKey,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'tenant_id,provider' },
+      )
+      .select()
+      .single()
+
+    if (error) {
+      return new Response(JSON.stringify({ error: 'Failed to save key: ' + error.message }), {
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    if (!provider || !apiKey) {
-      throw new Error('Provider and API Key are required')
-    }
-
-    const { data: usuarioData, error: usuarioError } = await supabase
-      .from('usuarios')
-      .select('id, ativo, papel')
-      .eq('tenant_id', tenantId)
-      .eq('email', user.email!)
-      .maybeSingle()
-
-    if (usuarioError) throw usuarioError
-
-    if (!usuarioData || !usuarioData.ativo) {
-      return new Response(
-        JSON.stringify({ error: 'Você não tem vínculo ativo com esta empresa.' }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      )
-    }
-
-    if (usuarioData.papel !== 'admin') {
-      return new Response(
-        JSON.stringify({ error: 'Apenas o administrador da empresa pode salvar a chave de IA.' }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      )
-    }
-
-    const encryptedKey = await encrypt(apiKey)
-
-    const { error: upsertError } = await supabase.from('ai_provider_keys').upsert(
-      {
-        tenant_id: tenantId,
-        user_id: user.id,
-        provider,
-        api_key_encrypted: encryptedKey,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'tenant_id,provider' },
-    )
-
-    if (upsertError) throw upsertError
-
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ status: 'ok', id: data?.id }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    return new Response(JSON.stringify({ error: 'Internal error: ' + message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

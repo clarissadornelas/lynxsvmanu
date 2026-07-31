@@ -1,22 +1,23 @@
 import { supabase } from '@/lib/supabase/client'
-import { type MotivoSaida } from '@/lib/funnel-phases'
+import { toast } from 'sonner'
 
-export interface ResultadoSaida {
-  ok: boolean
-  avisoBaseAtiva: boolean
-  erro: string | null
-}
-
-export async function eliminarCandidato(params: {
+export interface EliminarCandidatoParams {
   candidatoId: string
+  motivo: string
   statusAtual: string
-  motivo: MotivoSaida
   vagaId: string
   tenantId: string
-  ator: string
-}): Promise<ResultadoSaida> {
-  const { candidatoId, statusAtual, motivo, vagaId, tenantId, ator } = params
+  ator?: string
+}
 
+export async function eliminarCandidato({
+  candidatoId,
+  motivo,
+  statusAtual,
+  vagaId,
+  tenantId,
+  ator = 'humano',
+}: EliminarCandidatoParams): Promise<{ success: boolean; baseAtivaError: boolean }> {
   const { error: updErr } = await supabase
     .from('candidatos')
     .update({
@@ -27,17 +28,15 @@ export async function eliminarCandidato(params: {
     })
     .eq('id', candidatoId)
 
-  if (updErr) {
-    return { ok: false, avisoBaseAtiva: false, erro: updErr.message }
-  }
-
-  let avisoBaseAtiva = false
+  if (updErr) return { success: false, baseAtivaError: false }
 
   const { data: candData } = await supabase
     .from('candidatos')
     .select('nome, telefone, email, cargo, tenant_id')
     .eq('id', candidatoId)
     .single()
+
+  let baseAtivaError = false
 
   if (candData?.telefone) {
     const { data: existingBase } = await supabase
@@ -64,16 +63,14 @@ export async function eliminarCandidato(params: {
         cadencia_dias: 30,
       })
 
-      if (baseErr) {
-        avisoBaseAtiva = true
-      }
+      if (baseErr) baseAtivaError = true
     }
   }
 
   const { error: evtErr } = await supabase.from('candidato_eventos').insert({
     candidato_id: candidatoId,
     vaga_id: vagaId,
-    tenant_id: tenantId,
+    tenant_id: tenantId || candData?.tenant_id || null,
     tipo: 'saida_processo',
     de: statusAtual,
     para: motivo,
@@ -81,9 +78,7 @@ export async function eliminarCandidato(params: {
     ator,
   })
 
-  if (evtErr) {
-    console.error(evtErr)
-  }
+  if (evtErr) console.error(evtErr)
 
-  return { ok: true, avisoBaseAtiva, erro: null }
+  return { success: true, baseAtivaError }
 }

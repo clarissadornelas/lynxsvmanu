@@ -35,6 +35,10 @@ Deno.serve(async (req) => {
     if (entError || !entrevista) throw new Error('Entrevista não encontrada')
     if (!entrevista.transcricao)
       throw new Error('Transcrição não encontrada. Salve a transcrição antes de analisar.')
+    if (!entrevista.avaliada_em)
+      throw new Error(
+        'Avalie a entrevista antes de gerar o parecer da IA. O parecer é liberado pela avaliação do recrutador.',
+      )
 
     const { data: keyData } = await supabase
       .from('ai_provider_keys')
