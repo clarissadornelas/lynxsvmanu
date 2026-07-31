@@ -10,6 +10,7 @@ import CriarEmpresa from './pages/CriarEmpresa'
 import Layout from './components/Layout'
 import Index from './pages/Index'
 import Dashboard from './pages/Dashboard'
+
 import JobsList from './pages/vagas/JobsList'
 import JobSetup from './pages/vagas/JobSetup'
 import JobDetails from './pages/vagas/JobDetails'

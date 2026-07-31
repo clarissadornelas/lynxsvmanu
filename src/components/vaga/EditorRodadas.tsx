@@ -15,10 +15,14 @@ import {
   rotuloTipoRodada,
   TIPOS_RODADA,
   tipoRodadaValido,
+  resolverPerguntas,
+  parsePerguntas,
   type EtapaVaga,
+  type PerguntaEtapa,
 } from '@/lib/funnel-phases'
 import type { Json } from '@/lib/supabase/types'
-import { Lock, Plus, Save, Trash2 } from 'lucide-react'
+import { useActiveContext } from '@/stores/useActiveContext'
+import { ChevronDown, ChevronUp, Lock, Plus, Save, Trash2 } from 'lucide-react'
 
 interface EditorRodadasProps {
   etapas: Json | null | undefined
@@ -27,23 +31,69 @@ interface EditorRodadasProps {
   onSalvo?: () => void
 }
 
+function extrairBancoCasa(ppRaw: unknown): Record<string, PerguntaEtapa[]> {
+  const banco: Record<string, PerguntaEtapa[]> = {}
+  if (!ppRaw || typeof ppRaw !== 'object') return banco
+  const obj = ppRaw as Record<string, unknown>
+  for (const t of TIPOS_RODADA) {
+    const raw = obj[t.valor]
+    if (Array.isArray(raw)) {
+      banco[t.valor] = parsePerguntas(raw)
+    } else if (raw && typeof raw === 'object') {
+      const sub = raw as Record<string, unknown>
+      if (Array.isArray(sub.casa)) banco[t.valor] = parsePerguntas(sub.casa)
+      else if (Array.isArray(sub.perguntas)) banco[t.valor] = parsePerguntas(sub.perguntas)
+    }
+  }
+  const flat = Array.isArray(obj.casa)
+    ? parsePerguntas(obj.casa)
+    : Array.isArray(obj.perguntas)
+      ? parsePerguntas(obj.perguntas)
+      : null
+  if (flat) for (const t of TIPOS_RODADA) if (!banco[t.valor]) banco[t.valor] = flat
+  return banco
+}
+
+function origemBadge(p: PerguntaEtapa): { label: string; cls: string } {
+  if (p.escopo === 'vaga' || p.escopo === 'candidato')
+    return { label: 'desta vaga', cls: 'bg-blue-50 text-blue-700' }
+  if (p.editada) return { label: 'editada', cls: 'bg-amber-50 text-amber-700' }
+  return { label: 'herdada da casa', cls: 'bg-slate-100 text-slate-500' }
+}
+
 export default function EditorRodadas({
   etapas,
   candidatosPorRodada,
   vagaId,
   onSalvo,
 }: EditorRodadasProps) {
+  const { tenantId } = useActiveContext()
   const somenteLeitura = !vagaId
   const [rodadas, setRodadas] = useState<EtapaVaga[]>(() => parseEtapas(etapas))
   const [sujo, setSujo] = useState(false)
   const [salvando, setSalvando] = useState(false)
+  const [bancoCasa, setBancoCasa] = useState<Record<string, PerguntaEtapa[]>>({})
+  const [expandidas, setExpandidas] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     setRodadas(parseEtapas(etapas))
     setSujo(false)
   }, [etapas])
 
-  const alterar = (n: number, campo: keyof EtapaVaga, valor: string) => {
+  useEffect(() => {
+    if (!tenantId)
+      return supabase
+        .from('configuracoes_agente')
+        .select('perguntas_padrao')
+        .eq('tenant_id', tenantId)
+        .eq('agent_type', 'copiloto')
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data?.perguntas_padrao) setBancoCasa(extrairBancoCasa(data.perguntas_padrao))
+        })
+  }, [tenantId])
+
+  const alterar = (n: number, campo: 'nome' | 'tipo' | 'duracao', valor: string) => {
     setRodadas((prev) =>
       prev.map((r) => {
         if (r.n !== n) return r
@@ -51,6 +101,7 @@ export default function EditorRodadas({
           const num = Number(valor)
           return { ...r, duracao: Number.isFinite(num) && num >= 5 ? num : 5 }
         }
+        if (campo === 'tipo') return { ...r, tipo: tipoRodadaValido(valor) }
         return { ...r, [campo]: valor }
       }),
     )
@@ -60,14 +111,10 @@ export default function EditorRodadas({
   const acrescentar = () => {
     setRodadas((prev) => {
       const proximoN = prev.length > 0 ? Math.max(...prev.map((r) => r.n)) + 1 : 1
-      const nova: EtapaVaga = {
-        n: proximoN,
-        nome: 'Nova rodada',
-        tipo: 'rh',
-        agenda_id: null,
-        duracao: 60,
-      }
-      return [...prev, nova]
+      return [
+        ...prev,
+        { n: proximoN, nome: 'Nova rodada', tipo: 'rh', agenda_id: null, duracao: 60 },
+      ]
     })
     setSujo(true)
   }
@@ -76,6 +123,15 @@ export default function EditorRodadas({
     if ((candidatosPorRodada?.[n] ?? 0) > 0) return
     setRodadas((prev) => prev.filter((r) => r.n !== n).map((r, i) => ({ ...r, n: i + 1 })))
     setSujo(true)
+  }
+
+  const toggleExpand = (n: number) => {
+    setExpandidas((prev) => {
+      const next = new Set(prev)
+      if (next.has(n)) next.delete(n)
+      else next.add(n)
+      return next
+    })
   }
 
   const salvar = async () => {
@@ -115,6 +171,8 @@ export default function EditorRodadas({
         const numCandidatos = candidatosPorRodada?.[rodada.n] ?? 0
         const temAgenda = rodada.agenda_id !== null
         const podeRemover = numCandidatos === 0
+        const perguntas = resolverPerguntas(bancoCasa[rodada.tipo] ?? [], [])
+        const expandida = expandidas.has(rodada.n)
 
         return (
           <div key={rodada.n} className="rounded-lg border border-slate-200 bg-slate-100 p-4">
@@ -141,7 +199,7 @@ export default function EditorRodadas({
                       />
                       <Select
                         value={rodada.tipo}
-                        onValueChange={(val) => alterar(rodada.n, 'tipo', tipoRodadaValido(val))}
+                        onValueChange={(val) => alterar(rodada.n, 'tipo', val)}
                         disabled={somenteLeitura}
                       >
                         <SelectTrigger className="h-8 w-[130px] text-xs">
@@ -175,6 +233,47 @@ export default function EditorRodadas({
                 </span>
               </div>
             </div>
+
+            {perguntas.length > 0 && (
+              <div className="mt-2">
+                <button
+                  onClick={() => toggleExpand(rodada.n)}
+                  className="flex items-center gap-1 text-xs font-medium text-slate-600 hover:text-slate-800"
+                >
+                  {expandida ? (
+                    <ChevronUp className="h-3 w-3" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3" />
+                  )}
+                  {expandida
+                    ? `Esconder ${perguntas.length} pergunta(s) desta rodada`
+                    : `Ver ${perguntas.length} pergunta(s) desta rodada`}
+                </button>
+                {expandida && (
+                  <div className="mt-2 space-y-2">
+                    {perguntas.map((p) => {
+                      const origem = origemBadge(p)
+                      return (
+                        <div key={p.id} className="rounded-md bg-white/60 p-2.5">
+                          <p className="text-sm text-slate-700">{p.texto}</p>
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            <span
+                              className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${origem.cls}`}
+                            >
+                              {origem.label}
+                            </span>
+                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
+                              {p.tipo === 'fechada' ? 'fechada, nota 1 a 4' : 'aberta, só texto'}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {!somenteLeitura && (
               <div className="mt-2 flex justify-end">
                 {podeRemover ? (
