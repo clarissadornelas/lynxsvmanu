@@ -239,13 +239,18 @@ export default function InterviewRoom() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       streamRef.current = stream
-      if (videoRef.current) videoRef.current.srcObject = stream
       setLocalStatus('in_progress')
       toast.info('Videochamada iniciada.')
     } catch {
       toast.error('Erro ao acessar câmera/microfone.')
     }
   }
+
+  useEffect(() => {
+    if (localStatus === 'in_progress' && streamRef.current && videoRef.current) {
+      videoRef.current.srcObject = streamRef.current
+    }
+  }, [localStatus])
 
   const endCall = () => {
     if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop())
@@ -741,7 +746,7 @@ export default function InterviewRoom() {
       )}
 
       {localStatus === 'in_progress' && (
-        <div className="fixed inset-0 bg-slate-950 z-[100] flex items-center justify-center">
+        <div className="fixed inset-0 w-screen h-screen bg-slate-950 z-[100] flex items-center justify-center">
           <video
             ref={videoRef}
             autoPlay
