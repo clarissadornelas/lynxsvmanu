@@ -205,6 +205,25 @@ export default function TesteCV() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEntrevistaId])
 
+  const extractEdgeFunctionError = async (error: any): Promise<string> => {
+    const fallback = error?.message || String(error)
+    try {
+      const ctx = error?.context
+      if (ctx) {
+        const body = typeof ctx === 'string' ? ctx : await ctx.text()
+        const parsed = JSON.parse(body)
+        if (parsed?.error) {
+          const detail = parsed.detail ? ` [${parsed.detail}]` : ''
+          return `${parsed.error}${detail}`
+        }
+        if (parsed?.message) return parsed.message
+      }
+    } catch {
+      // Body couldn't be parsed, fall back to original error message
+    }
+    return fallback
+  }
+
   const handleParser = async () => {
     if (!file) return
     if (!tenantId) {
@@ -219,7 +238,7 @@ export default function TesteCV() {
       fd.append('file', file)
       fd.append('tenant_id', tenantId)
       const { data, error } = await supabase.functions.invoke('extract-cv-info', { body: fd })
-      if (error) throw new Error(error.message || String(error))
+      if (error) throw new Error(await extractEdgeFunctionError(error))
       if (data?.error) {
         const detail = data.detail ? ` [${data.detail}]` : ''
         throw new Error(`${data.error}${detail}`)
@@ -244,7 +263,7 @@ export default function TesteCV() {
       fd.append('file', matchFile)
       fd.append('vaga_id', selectedVagaId)
       const { data, error } = await supabase.functions.invoke('extract-cv-info', { body: fd })
-      if (error) throw new Error(error.message || String(error))
+      if (error) throw new Error(await extractEdgeFunctionError(error))
       if (data?.error) {
         const detail = data.detail ? ` [${data.detail}]` : ''
         throw new Error(`${data.error}${detail}`)
