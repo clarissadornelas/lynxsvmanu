@@ -100,9 +100,7 @@ Deno.serve(async (req) => {
       apiKey = await decrypt(keyData.api_key_encrypted)
     } catch (e) {
       console.error('Decrypt error:', e)
-      throw new Error(
-        'Falha ao descriptografar a chave de IA. Verifique a configuração do ENCRYPTION_SECRET.',
-      )
+      throw new Error('Falha ao descriptografar a chave de IA. Verifique a configuração do ENCRYPTION_SECRET.')
     }
 
     if (!apiKey) {
@@ -124,7 +122,8 @@ Deno.serve(async (req) => {
           messages: [
             {
               role: 'system',
-              content: `You are an expert HR analyst. Analyze the interview transcript and provide a comprehensive assessment in Brazilian Portuguese.
+              content:
+                `You are an expert HR analyst. Analyze the interview transcript and provide a comprehensive assessment in Brazilian Portuguese.
 
 Output ONLY a valid JSON object with this schema:
 {
@@ -196,9 +195,9 @@ Analyze the candidate's speech patterns, answers, and behavior indicators from t
   } catch (error) {
     const status = error.message === 'Não autorizado' ? 401 : 500
     console.error('lab-analyze-interview error:', error)
-    return new Response(JSON.stringify({ error: error.message || 'Erro interno' }), {
-      status,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    return new Response(
+      JSON.stringify({ error: error.message || 'Erro interno' }),
+      { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    )
   }
 })

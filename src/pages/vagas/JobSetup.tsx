@@ -20,7 +20,9 @@ import { Search, Loader2, CheckCircle2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Progress } from '@/components/ui/progress'
 import { toast as sonnerToast } from 'sonner'
+import type { Json } from '@/lib/supabase/types'
 import { CvIngest } from '@/components/CvIngest'
+import EditorRodadas from '@/components/vaga/EditorRodadas'
 
 interface TenantOption {
   id: string
@@ -51,6 +53,7 @@ export default function JobSetup() {
   const [progress, setProgress] = useState(0)
   const [step, setStep] = useState<1 | 2>(1)
   const [novaVagaId, setNovaVagaId] = useState<string | null>(null)
+  const [etapasNovaVaga, setEtapasNovaVaga] = useState<Json | null>(null)
 
   useEffect(() => {
     async function loadTenants() {
@@ -74,6 +77,21 @@ export default function JobSetup() {
       setFormData((prev) => (prev.tenantId ? prev : { ...prev, tenantId: activeTenantId }))
     }
   }, [activeTenantId])
+
+  const buscarEtapas = async (id: string) => {
+    const { data, error } = await supabase.from('vagas').select('etapas').eq('id', id).single()
+    if (error) {
+      sonnerToast.error('Erro ao carregar etapas: ' + error.message)
+      return
+    }
+    setEtapasNovaVaga(data?.etapas ?? null)
+  }
+
+  useEffect(() => {
+    if (step === 2 && novaVagaId && etapasNovaVaga === null) {
+      buscarEtapas(novaVagaId)
+    }
+  }, [step, novaVagaId, etapasNovaVaga])
 
   const handleResearch = () => {
     if (!formData.company) {
@@ -246,25 +264,41 @@ export default function JobSetup() {
       <div className="max-w-4xl mx-auto space-y-6 pb-20">
         <PageHeader
           title="Nova Vaga"
-          subtitle="A vaga foi criada. Adicione candidatos agora ou conclua mais tarde."
+          subtitle="A vaga foi criada. Configure as etapas e adicione candidatos."
         />
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold">
-              Etapa 2 — Adicionar candidatos via CV (opcional)
-            </h2>
-            <p className="text-sm text-slate-500">
-              A vaga já foi criada. Suba os currículos agora, ou conclua e adicione depois.
-            </p>
+        <div className="space-y-6">
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">Etapas da entrevista</h2>
+              <p className="text-sm text-slate-500">
+                Defina quantas rodadas esta vaga terá e o nome de cada uma. Dá para mudar depois na
+                aba Info da vaga.
+              </p>
+            </div>
+            <EditorRodadas
+              vagaId={novaVagaId}
+              etapas={etapasNovaVaga}
+              onSalvo={() => buscarEtapas(novaVagaId)}
+            />
           </div>
-          <CvIngest
-            vagaId={novaVagaId}
-            tenantId={formData.tenantId}
-            onDone={() => navigate(`/vagas/${novaVagaId}`)}
-          />
-          <Button variant="outline" onClick={() => navigate(`/vagas/${novaVagaId}`)}>
-            Concluir sem adicionar candidatos
-          </Button>
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">
+                Etapa 2 — Adicionar candidatos via CV (opcional)
+              </h2>
+              <p className="text-sm text-slate-500">
+                A vaga já foi criada. Suba os currículos agora, ou conclua e adicione depois.
+              </p>
+            </div>
+            <CvIngest
+              vagaId={novaVagaId}
+              tenantId={formData.tenantId}
+              onDone={() => navigate(`/vagas/${novaVagaId}`)}
+            />
+            <Button variant="outline" onClick={() => navigate(`/vagas/${novaVagaId}`)}>
+              Concluir sem adicionar candidatos
+            </Button>
+          </div>
         </div>
       </div>
     )
