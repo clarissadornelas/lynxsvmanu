@@ -205,69 +205,71 @@ export default function AvaliacaoEntrevista() {
               Nenhuma pergunta configurada para esta rodada.
             </p>
           )}
-          {perguntas.map((pergunta, idx) => {
-            const resposta = avaliacao?.respostas.find((r) => r.pergunta_id === pergunta.id)
-            return (
-              <div key={pergunta.id || idx} className="space-y-3">
-                <div className="flex items-start gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-medium mt-0.5">
-                    {idx + 1}
-                  </span>
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-medium text-slate-900">{pergunta.texto}</p>
-                      <Badge
-                        variant="outline"
-                        className={
-                          pergunta.tipo === 'fechada'
-                            ? 'border-blue-200 bg-blue-50 text-blue-700 text-xs'
-                            : 'border-amber-200 bg-amber-50 text-amber-700 text-xs'
-                        }
-                      >
-                        {pergunta.tipo === 'fechada' ? (
-                          <CheckSquare className="w-3 h-3 mr-1" />
-                        ) : (
-                          <MessageSquare className="w-3 h-3 mr-1" />
-                        )}
-                        {pergunta.tipo}
-                      </Badge>
-                    </div>
-
-                    {pergunta.tipo === 'fechada' ? (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {NOTAS_AVALIACAO.map((opcao) => {
-                          const isSelected = resposta?.nota === opcao.valor
-                          return (
-                            <button
-                              key={opcao.valor}
-                              type="button"
-                              onClick={() => updateResposta(pergunta.id, { nota: opcao.valor })}
-                              className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                                isSelected
-                                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                              }`}
-                            >
-                              {opcao.rotulo}
-                            </button>
-                          )
-                        })}
+          {perguntas
+            .filter((p) => p.tipo === 'fechada')
+            .map((pergunta, idx) => {
+              const resposta = avaliacao?.respostas.find((r) => r.pergunta_id === pergunta.id)
+              return (
+                <div key={pergunta.id || idx} className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-medium mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <div className="flex-1 space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-medium text-slate-900">{pergunta.texto}</p>
+                        <Badge
+                          variant="outline"
+                          className={
+                            pergunta.tipo === 'fechada'
+                              ? 'border-blue-200 bg-blue-50 text-blue-700 text-xs'
+                              : 'border-amber-200 bg-amber-50 text-amber-700 text-xs'
+                          }
+                        >
+                          {pergunta.tipo === 'fechada' ? (
+                            <CheckSquare className="w-3 h-3 mr-1" />
+                          ) : (
+                            <MessageSquare className="w-3 h-3 mr-1" />
+                          )}
+                          {pergunta.tipo}
+                        </Badge>
                       </div>
-                    ) : (
-                      <Textarea
-                        value={resposta?.resposta_texto || ''}
-                        onChange={(e) =>
-                          updateResposta(pergunta.id, { resposta_texto: e.target.value })
-                        }
-                        placeholder="Registre a resposta do candidato..."
-                        className="min-h-[80px] text-sm"
-                      />
-                    )}
+
+                      {pergunta.tipo === 'fechada' ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          {NOTAS_AVALIACAO.map((opcao) => {
+                            const isSelected = resposta?.nota === opcao.valor
+                            return (
+                              <button
+                                key={opcao.valor}
+                                type="button"
+                                onClick={() => updateResposta(pergunta.id, { nota: opcao.valor })}
+                                className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                                  isSelected
+                                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                                }`}
+                              >
+                                {opcao.rotulo}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <Textarea
+                          value={resposta?.resposta_texto || ''}
+                          onChange={(e) =>
+                            updateResposta(pergunta.id, { resposta_texto: e.target.value })
+                          }
+                          placeholder="Registre a resposta do candidato..."
+                          className="min-h-[80px] text-sm"
+                        />
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
         </CardContent>
       </Card>
 

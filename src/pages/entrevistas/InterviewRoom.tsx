@@ -407,7 +407,7 @@ export default function InterviewRoom() {
 
       if (realizadaPorNome) setRealizadaPor({ nome: realizadaPorNome })
 
-      toast.success('Entrevista confirmada com sucesso!')
+      toast.success('Entrevista registrada. Avalie a entrevista para liberar o parecer da IA.')
 
       const updatedEntrevista = {
         ...entrevista,
@@ -418,51 +418,8 @@ export default function InterviewRoom() {
         agendamento_id: agendamentoId,
       }
       setEntrevista(updatedEntrevista)
-
-      const { error: emAnaliseError } = await supabase
-        .from('entrevistas')
-        .update({ status: 'em_analise' })
-        .eq('id', id)
-
-      if (emAnaliseError) {
-        console.error('Erro ao atualizar status para em_analise:', emAnaliseError)
-      } else {
-        setEntrevista({ ...updatedEntrevista, status: 'em_analise' })
-      }
-
-      const { data: aiData, error: aiError } = await supabase.functions.invoke(
-        'copilot-analyze-interview',
-        { body: { entrevista_id: id } },
-      )
-      if (aiError || aiData?.error) {
-        await supabase.from('entrevistas').update({ status: 'concluida' }).eq('id', id)
-        setEntrevista({ ...updatedEntrevista, status: 'concluida' })
-        const confirmAiErrMsg = aiError?.message || aiData?.error || ''
-        if (
-          aiError instanceof TypeError ||
-          confirmAiErrMsg.includes('Failed to fetch') ||
-          confirmAiErrMsg.includes('Relay Error')
-        ) {
-          toast.error(
-            'Erro de conexão: Não foi possível alcançar o serviço de IA. Verifique sua internet ou tente novamente mais tarde.',
-          )
-        } else {
-          toast.error(
-            'Entrevista registrada. A análise da IA falhou e pode ser executada novamente.',
-          )
-        }
-      } else {
-        toast.success('Análise iniciada! Aguarde...')
-      }
     } catch (err: any) {
       toast.error(err.message || 'Erro ao processar entrevista')
-      await supabase.from('entrevistas').update({ status: 'concluida' }).eq('id', id)
-      setEntrevista({
-        ...entrevista,
-        transcricao: transcript,
-        status: 'concluida',
-        realizada_em: new Date().toISOString(),
-      })
     }
     setAnalyzing(false)
   }
@@ -825,60 +782,72 @@ export default function InterviewRoom() {
               <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
               <h2 className="text-xl font-semibold">Entrevista Registrada</h2>
               <p className="text-slate-500 max-w-md mx-auto">
-                A transcrição foi salva e o status do candidato foi atualizado para
-                &quot;Entrevistado&quot;. A análise da IA pode ser executada novamente.
+                A transcrição foi salva. Agora avalie a entrevista: o parecer da IA é liberado pela
+                sua avaliação.
               </p>
-              <Button
-                size="lg"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                onClick={async () => {
-                  setAnalyzing(true)
-                  try {
-                    await supabase.from('entrevistas').update({ status: 'em_analise' }).eq('id', id)
-                    setEntrevista({ ...entrevista, status: 'em_analise' })
-                    const { data: aiData, error: aiError } = await supabase.functions.invoke(
-                      'copilot-analyze-interview',
-                      {
-                        body: { entrevista_id: id },
-                      },
-                    )
-                    if (aiError || aiData?.error) {
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button
+                  size="lg"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white mr-2"
+                  onClick={() => navigate(`/avaliar/${id}`)}
+                >
+                  Avaliar entrevista
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={async () => {
+                    setAnalyzing(true)
+                    try {
                       await supabase
                         .from('entrevistas')
-                        .update({ status: 'concluida' })
+                        .update({ status: 'em_analise' })
                         .eq('id', id)
-                      setEntrevista({ ...entrevista, status: 'concluida' })
-                      const inlineAiErrMsg = aiError?.message || aiData?.error || ''
-                      if (
-                        aiError instanceof TypeError ||
-                        inlineAiErrMsg.includes('Failed to fetch') ||
-                        inlineAiErrMsg.includes('Relay Error')
-                      ) {
-                        toast.error(
-                          'Erro de conexão: Não foi possível alcançar o serviço de IA. Verifique sua internet ou tente novamente mais tarde.',
-                        )
+                      setEntrevista({ ...entrevista, status: 'em_analise' })
+                      const { data: aiData, error: aiError } = await supabase.functions.invoke(
+                        'copilot-analyze-interview',
+                        {
+                          body: { entrevista_id: id },
+                        },
+                      )
+                      if (aiError || aiData?.error) {
+                        await supabase
+                          .from('entrevistas')
+                          .update({ status: 'concluida' })
+                          .eq('id', id)
+                        setEntrevista({ ...entrevista, status: 'concluida' })
+                        const inlineAiErrMsg = aiError?.message || aiData?.error || ''
+                        if (
+                          aiError instanceof TypeError ||
+                          inlineAiErrMsg.includes('Failed to fetch') ||
+                          inlineAiErrMsg.includes('Relay Error')
+                        ) {
+                          toast.error(
+                            'Erro de conexão: Não foi possível alcançar o serviço de IA. Verifique sua internet ou tente novamente mais tarde.',
+                          )
+                        } else {
+                          toast.error(
+                            'Entrevista registrada. A análise da IA falhou e pode ser executada novamente.',
+                          )
+                        }
                       } else {
-                        toast.error(
-                          'Entrevista registrada. A análise da IA falhou e pode ser executada novamente.',
-                        )
+                        toast.success('Análise iniciada! Aguarde...')
                       }
-                    } else {
-                      toast.success('Análise iniciada! Aguarde...')
+                    } catch {
+                      toast.error('Erro ao processar análise')
                     }
-                  } catch {
-                    toast.error('Erro ao processar análise')
-                  }
-                  setAnalyzing(false)
-                }}
-                disabled={analyzing}
-              >
-                {analyzing ? (
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                ) : (
-                  <Activity className="w-5 h-5 mr-2" />
-                )}
-                Executar Análise com IA
-              </Button>
+                    setAnalyzing(false)
+                  }}
+                  disabled={analyzing}
+                >
+                  {analyzing ? (
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  ) : (
+                    <Activity className="w-5 h-5 mr-2" />
+                  )}
+                  Executar Análise com IA
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
