@@ -15,18 +15,18 @@ Deno.serve(async (req) => {
 
     if (!supabaseUrl || !supabaseAnonKey) {
       console.error('Missing env vars: SUPABASE_URL or SUPABASE_ANON_KEY')
-      return new Response(JSON.stringify({ error: 'Configuração do servidor incompleta.' }), {
-        status: 500,
-        headers: jsonHeaders,
-      })
+      return new Response(
+        JSON.stringify({ error: 'Configuração do servidor incompleta.' }),
+        { status: 500, headers: jsonHeaders },
+      )
     }
 
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Não autorizado' }), {
-        status: 401,
-        headers: jsonHeaders,
-      })
+      return new Response(
+        JSON.stringify({ error: 'Não autorizado' }),
+        { status: 401, headers: jsonHeaders },
+      )
     }
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -38,10 +38,10 @@ Deno.serve(async (req) => {
       error: userError,
     } = await supabase.auth.getUser()
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Não autorizado' }), {
-        status: 401,
-        headers: jsonHeaders,
-      })
+      return new Response(
+        JSON.stringify({ error: 'Não autorizado' }),
+        { status: 401, headers: jsonHeaders },
+      )
     }
 
     const body = await req.json()
@@ -54,7 +54,11 @@ Deno.serve(async (req) => {
       )
     }
 
-    const { data: vaga } = await supabase.from('vagas').select('*').eq('id', vaga_id).maybeSingle()
+    const { data: vaga } = await supabase
+      .from('vagas')
+      .select('*')
+      .eq('id', vaga_id)
+      .maybeSingle()
 
     const { data: candidato } = await supabase
       .from('candidatos')
@@ -63,10 +67,10 @@ Deno.serve(async (req) => {
       .maybeSingle()
 
     if (!vaga || !candidato) {
-      return new Response(JSON.stringify({ error: 'Vaga ou candidato não encontrado.' }), {
-        status: 404,
-        headers: jsonHeaders,
-      })
+      return new Response(
+        JSON.stringify({ error: 'Vaga ou candidato não encontrado.' }),
+        { status: 404, headers: jsonHeaders },
+      )
     }
 
     const { data: keyData } = await supabase
@@ -82,7 +86,8 @@ Deno.serve(async (req) => {
         console.error('ENCRYPTION_SECRET is not configured on the server')
         return new Response(
           JSON.stringify({
-            error: 'Configuração de segurança ausente: ENCRYPTION_SECRET não definido no servidor.',
+            error:
+              'Configuração de segurança ausente: ENCRYPTION_SECRET não definido no servidor.',
           }),
           { status: 500, headers: jsonHeaders },
         )
@@ -202,17 +207,16 @@ Generate 3-5 categories with 1-3 questions each. All content must be in Brazilia
     return new Response(
       JSON.stringify({
         dry_run: true,
-        message:
-          'Roteiro gerado em modo laboratório (dry-run). Nenhuma alteração foi salva no banco.',
+        message: 'Roteiro gerado em modo laboratório (dry-run). Nenhuma alteração foi salva no banco.',
         ...roteiro,
       }),
       { headers: jsonHeaders },
     )
   } catch (error) {
     console.error('lab-generate-prep error:', error)
-    return new Response(JSON.stringify({ error: error.message || 'Erro interno' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    return new Response(
+      JSON.stringify({ error: error.message || 'Erro interno' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    )
   }
 })
