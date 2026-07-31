@@ -88,7 +88,7 @@ export default function Settings() {
     setSavingKey(true)
     try {
       const { error } = await supabase.functions.invoke('provider-save-key', {
-        body: { tenantId: activeTenantId, provider: 'openai', apiKey: trimmed },
+        body: { tenant_id: activeTenantId, provider: 'openai', api_key: trimmed },
       })
       if (error) throw error
       toast({

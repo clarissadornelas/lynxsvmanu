@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dialog'
 import { Checkbox } from '@/components/ui/checkbox'
 import { GripVertical, Loader2, Save, Trophy, UserCheck } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { getInitials } from '@/lib/avatar-utils'
@@ -71,6 +72,7 @@ export default function ShortlistTab({
   const [fecharVaga, setFecharVaga] = useState(false)
   const [executando, setExecutando] = useState(false)
   const { reload } = useRecruitmentStore()
+  const navigate = useNavigate()
 
   const finalistas = useMemo(
     () =>
@@ -239,13 +241,18 @@ export default function ShortlistTab({
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-900">
-          Shortlist ({ordered.length} finalistas)
-        </h2>
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">
+            Shortlist ({ordered.length} finalistas)
+          </h2>
+          <div className="text-sm text-slate-500">
+            Arraste para ordenar. A ordem é definida por você, não pelo score.
+          </div>
+        </div>
         <Button
           onClick={salvar}
           disabled={!sujo || saving}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white"
         >
           {saving ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -285,7 +292,12 @@ export default function ShortlistTab({
                 !isDragging && !isDragOver && 'border-slate-200',
               )}
             >
-              <CardContent className="p-3 flex items-center gap-3">
+              <CardContent
+                className="p-3 flex items-center gap-3 cursor-pointer"
+                onClick={() => {
+                  if (dragIndex === null) navigate(`/dossie/${c.id}`)
+                }}
+              >
                 <GripVertical className="w-4 h-4 text-slate-400 shrink-0" />
                 <span className="flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-slate-600 font-bold text-sm shrink-0">
                   {i + 1}
@@ -299,14 +311,14 @@ export default function ShortlistTab({
                   <p className="text-xs text-slate-500 truncate">{c.role}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <Badge variant="outline" className="text-xs">
+                  <span className="text-sm font-medium text-slate-900">
                     {media !== null
                       ? media.toLocaleString('pt-BR', {
                           minimumFractionDigits: 0,
                           maximumFractionDigits: 1,
                         })
                       : '—'}
-                  </Badge>
+                  </span>
                   <span className={cn('text-xs', lowCob ? 'text-amber-700' : 'text-slate-500')}>
                     {resp} de {fech}
                   </span>
@@ -314,7 +326,8 @@ export default function ShortlistTab({
                     size="sm"
                     variant="secondary"
                     className="text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation()
                       setContratando(c)
                       setFecharVaga(false)
                     }}
