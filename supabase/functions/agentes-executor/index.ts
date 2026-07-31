@@ -142,33 +142,27 @@ async function dispatchWhatsApp(
   contexto: string,
 ): Promise<boolean> {
   try {
-    const response = await fetch(
-      `${supabaseUrl}/functions/v1/send-whatsapp-message`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${supabaseServiceKey}`,
-        },
-        body: JSON.stringify({
-          candidateId,
-          baseId,
-          phone,
-          message,
-          contexto,
-        }),
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp-message`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${supabaseServiceKey}`,
       },
-    )
+      body: JSON.stringify({
+        candidateId,
+        baseId,
+        phone,
+        message,
+        contexto,
+      }),
+    })
     return response.ok
   } catch {
     return false
   }
 }
 
-async function updateBaseAtivaEngagement(
-  tenantId: string,
-  candidateId: string,
-): Promise<void> {
+async function updateBaseAtivaEngagement(tenantId: string, candidateId: string): Promise<void> {
   const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     auth: { persistSession: false },
   })
@@ -302,7 +296,8 @@ async function handleResponderCandidato(
     }
   }
 
-  const systemPrompt = config.mensagem_apresentacao ||
+  const systemPrompt =
+    config.mensagem_apresentacao ||
     `Você é um assistente de recrutamento. Tom: ${config.tom || 'profissional'}. ${config.tom_detalhe || ''}. Gere uma mensagem curta e cordial para o candidato.`
 
   const context = `Candidato: ${candidato.nome}
@@ -349,10 +344,7 @@ Tipo de resposta detectado: ${tipoResposta}`
   }
 
   if (tipoResposta === 'confirmar') {
-    await supabase
-      .from('candidatos')
-      .update({ status: 'confirmado' })
-      .eq('id', acao.candidato_id)
+    await supabase.from('candidatos').update({ status: 'confirmado' }).eq('id', acao.candidato_id)
   }
 
   if (tipoResposta === 'pergunta' || tipoResposta === 'outro') {
@@ -391,7 +383,11 @@ async function sendOrSimulate(
 ): Promise<{ success: boolean; resultado: string; simulada: boolean }> {
   const isSimulated = config.modo === 'ensaio'
 
-  if (acao.tipo_acao === 'responder_candidato' || acao.tipo_acao === 'enviar_whatsapp' || acao.tipo_acao === 'enviar_mensagem') {
+  if (
+    acao.tipo_acao === 'responder_candidato' ||
+    acao.tipo_acao === 'enviar_whatsapp' ||
+    acao.tipo_acao === 'enviar_mensagem'
+  ) {
     if (isSimulated || !apiKey) {
       return {
         success: true,
@@ -493,12 +489,7 @@ async function processAcao(
 
     const apiKey = await getApiKey(acao.tenant_id)
 
-    const { success, resultado, simulada } = await sendOrSimulate(
-      supabase,
-      acao,
-      config,
-      apiKey,
-    )
+    const { success, resultado, simulada } = await sendOrSimulate(supabase, acao, config, apiKey)
 
     const escalada = resultado.includes('escalada') || resultado.includes('escalado')
 
@@ -516,10 +507,10 @@ Deno.serve(async (req: Request) => {
 
   try {
     if (!supabaseUrl || !supabaseServiceKey) {
-      return new Response(
-        JSON.stringify({ error: 'Configuração do servidor incompleta' }),
-        { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
-      )
+      return new Response(JSON.stringify({ error: 'Configuração do servidor incompleta' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
@@ -527,7 +518,11 @@ Deno.serve(async (req: Request) => {
     })
 
     const body = await req.json().catch(() => ({}))
-    const { acao_id, batch = true, limit = 10 } = body as {
+    const {
+      acao_id,
+      batch = true,
+      limit = 10,
+    } = body as {
       acao_id?: string
       batch?: boolean
       limit?: number
@@ -567,10 +562,10 @@ Deno.serve(async (req: Request) => {
       }
       acoesToProcess = (acoes ?? []) as AcaoAgente[]
     } else {
-      return new Response(
-        JSON.stringify({ error: 'Especifique acao_id ou ative batch=true' }),
-        { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
-      )
+      return new Response(JSON.stringify({ error: 'Especifique acao_id ou ative batch=true' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      })
     }
 
     if (acoesToProcess.length === 0) {
@@ -595,7 +590,12 @@ Deno.serve(async (req: Request) => {
       falhas: 0,
     }
 
-    const resultados: Array<{ id: string; success: boolean; resultado: string; simulada: boolean }> = []
+    const resultados: Array<{
+      id: string
+      success: boolean
+      resultado: string
+      simulada: boolean
+    }> = []
 
     for (const acao of acoesToProcess) {
       const { data: claimed } = await supabase
