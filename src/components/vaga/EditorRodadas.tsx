@@ -19,10 +19,12 @@ import {
   parsePerguntas,
   type EtapaVaga,
   type PerguntaEtapa,
+  type TipoPergunta,
 } from '@/lib/funnel-phases'
 import type { Json } from '@/lib/supabase/types'
 import { useActiveContext } from '@/stores/useActiveContext'
-import { ChevronDown, ChevronUp, Lock, Plus, Save, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Lock, Plus, Save } from 'lucide-react'
+import { StageQuestions } from '@/components/vaga/StageQuestions'
 
 interface EditorRodadasProps {
   etapas: Json | null | undefined
@@ -52,13 +54,6 @@ function extrairBancoCasa(ppRaw: unknown): Record<string, PerguntaEtapa[]> {
       : null
   if (flat) for (const t of TIPOS_RODADA) if (!banco[t.valor]) banco[t.valor] = flat
   return banco
-}
-
-function origemBadge(p: PerguntaEtapa): { label: string; cls: string } {
-  if (p.escopo === 'vaga' || p.escopo === 'candidato')
-    return { label: 'desta vaga', cls: 'bg-blue-50 text-blue-700' }
-  if (p.editada) return { label: 'editada', cls: 'bg-amber-50 text-amber-700' }
-  return { label: 'herdada da casa', cls: 'bg-slate-100 text-slate-500' }
 }
 
 export default function EditorRodadas({
@@ -134,6 +129,61 @@ export default function EditorRodadas({
     })
   }
 
+  const acrescentarPergunta = (n: number, texto: string) => {
+    const id = `vaga-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    setRodadas((prev) =>
+      prev.map((r) => {
+        if (r.n !== n) return r
+        const pergunta: PerguntaEtapa = {
+          id,
+          texto,
+          tipo: 'fechada',
+          escopo: 'vaga',
+        }
+        return { ...r, perguntas: [...(r.perguntas ?? []), pergunta] }
+      }),
+    )
+    setExpandidas((prev) => new Set(prev).add(n))
+    setSujo(true)
+  }
+
+  const editarPergunta = (n: number, perguntaId: string, novoTexto: string, tipo: TipoPergunta) => {
+    setRodadas((prev) =>
+      prev.map((r) => {
+        if (r.n !== n) return r
+        const existing = r.perguntas ?? []
+        const idx = existing.findIndex((p) => p.id === perguntaId)
+        if (idx >= 0) {
+          const updated = [...existing]
+          updated[idx] = { ...updated[idx], texto: novoTexto, editada: true }
+          return { ...r, perguntas: updated }
+        }
+        const pergunta: PerguntaEtapa = {
+          id: perguntaId,
+          texto: novoTexto,
+          tipo,
+          escopo: 'vaga',
+          editada: true,
+        }
+        return { ...r, perguntas: [...existing, pergunta] }
+      }),
+    )
+    setSujo(true)
+  }
+
+  const removerPergunta = (n: number, perguntaId: string) => {
+    setRodadas((prev) =>
+      prev.map((r) => {
+        if (r.n !== n) return r
+        return {
+          ...r,
+          perguntas: (r.perguntas ?? []).filter((p) => p.id !== perguntaId),
+        }
+      }),
+    )
+    setSujo(true)
+  }
+
   const salvar = async () => {
     if (!vagaId) return
     setSalvando(true)
@@ -171,8 +221,12 @@ export default function EditorRodadas({
         const numCandidatos = candidatosPorRodada?.[rodada.n] ?? 0
         const temAgenda = rodada.agenda_id !== null
         const podeRemover = numCandidatos === 0
-        const perguntas = resolverPerguntas(bancoCasa[rodada.tipo] ?? [], [])
+        const perguntasResolvidas = resolverPerguntas(
+          bancoCasa[rodada.tipo] ?? [],
+          rodada.perguntas ?? [],
+        )
         const expandida = expandidas.has(rodada.n)
+        const mostrarPerguntas = expandida || (perguntasResolvidas.length === 0 && !somenteLeitura)
 
         return (
           <div key={rodada.n} className="rounded-lg border border-slate-200 bg-slate-100 p-4">
@@ -234,7 +288,7 @@ export default function EditorRodadas({
               </div>
             </div>
 
-            {perguntas.length > 0 && (
+            {perguntasResolvidas.length > 0 && (
               <div className="mt-2">
                 <button
                   onClick={() => toggleExpand(rodada.n)}
@@ -246,32 +300,22 @@ export default function EditorRodadas({
                     <ChevronDown className="h-3 w-3" />
                   )}
                   {expandida
-                    ? `Esconder ${perguntas.length} pergunta(s) desta rodada`
-                    : `Ver ${perguntas.length} pergunta(s) desta rodada`}
+                    ? `Esconder ${perguntasResolvidas.length} pergunta(s) desta rodada`
+                    : `Ver ${perguntasResolvidas.length} pergunta(s) desta rodada`}
                 </button>
-                {expandida && (
-                  <div className="mt-2 space-y-2">
-                    {perguntas.map((p) => {
-                      const origem = origemBadge(p)
-                      return (
-                        <div key={p.id} className="rounded-md bg-white/60 p-2.5">
-                          <p className="text-sm text-slate-700">{p.texto}</p>
-                          <div className="mt-1 flex flex-wrap gap-1.5">
-                            <span
-                              className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${origem.cls}`}
-                            >
-                              {origem.label}
-                            </span>
-                            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
-                              {p.tipo === 'fechada' ? 'fechada, nota 1 a 4' : 'aberta, só texto'}
-                            </span>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
               </div>
+            )}
+
+            {mostrarPerguntas && (
+              <StageQuestions
+                rodada={rodada}
+                bancoCasa={bancoCasa[rodada.tipo] ?? []}
+                somenteLeitura={somenteLeitura}
+                numCandidatos={numCandidatos}
+                onAddQuestion={acrescentarPergunta}
+                onEditQuestion={editarPergunta}
+                onRemoveQuestion={removerPergunta}
+              />
             )}
 
             {!somenteLeitura && (

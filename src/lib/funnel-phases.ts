@@ -110,6 +110,7 @@ export interface EtapaVaga {
   tipo: string
   agenda_id: string | null
   duracao: number
+  perguntas?: PerguntaEtapa[]
 }
 
 export function parseEtapas(raw: unknown): EtapaVaga[] {
@@ -123,6 +124,7 @@ export function parseEtapas(raw: unknown): EtapaVaga[] {
         tipo: typeof e.tipo === 'string' ? e.tipo : 'rh',
         agenda_id: e.agenda_id == null ? null : String(e.agenda_id),
         duracao: typeof e.duracao === 'number' ? e.duracao : 60,
+        perguntas: parsePerguntas(e.perguntas),
       }),
     )
   parsed.sort((a, b) => a.n - b.n)
