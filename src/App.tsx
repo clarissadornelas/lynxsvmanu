@@ -16,6 +16,7 @@ import JobSetup from './pages/vagas/JobSetup'
 import JobDetails from './pages/vagas/JobDetails'
 import Candidates from './pages/Candidates'
 import DossieCandidato from './pages/candidatos/DossieCandidato'
+import CandidateProfile from './pages/candidatos/CandidateProfile'
 import InterviewSetup from './pages/entrevistas/InterviewSetup'
 import InterviewRoom from './pages/entrevistas/InterviewRoom'
 import AvaliacaoEntrevista from './pages/entrevistas/AvaliacaoEntrevista'
@@ -105,7 +106,7 @@ const AppRoutes = () => (
           <Route path="/vagas/:id" element={<JobDetails />} />
 
           <Route path="/candidatos" element={<Candidates />} />
-          <Route path="/candidatos/:candidatoId" element={<DossieCandidato />} />
+          <Route path="/candidatos/:id" element={<CandidateProfile />} />
 
           <Route path="/entrevistas" element={<InterviewSetup />} />
           <Route path="/entrevistas/nova" element={<InterviewSetup />} />
