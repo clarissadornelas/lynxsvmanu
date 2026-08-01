@@ -309,7 +309,7 @@ export default function AvaliacaoEntrevista() {
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <FileText className="w-5 h-5 text-blue-600" />
-            Perguntas ({perguntas.length})
+            Perguntas ({perguntas.filter((p) => p.tipo === 'fechada').length})
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
