@@ -8,40 +8,30 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import {
   AlertTriangle,
   Copy,
   Database,
   Trash2,
-  Pencil,
   Loader2,
   Pause,
   Play,
   Archive,
   UserPlus,
   RotateCcw,
+  Settings2,
 } from 'lucide-react'
-import { Checkbox } from '@/components/ui/checkbox'
 import useRecruitmentStore from '@/stores/useRecruitmentStore'
 import { JobFunnelSummary } from '@/components/JobFunnelSummary'
 import { useJobOperations } from '@/hooks/use-job-operations'
 import { CvIngest } from '@/components/CvIngest'
 import { toast } from 'sonner'
 import { Separator } from '@/components/ui/separator'
-import { JobAvailabilitySection } from '@/components/job-availability/JobAvailabilitySection'
 import { DangerZone } from '@/components/DangerZone'
+import { Link } from 'react-router-dom'
+import { parseEtapas } from '@/lib/funnel-phases'
 
 interface Props {
   jobId: string | null
@@ -103,6 +93,23 @@ export function JobProfileSheet({ jobId, open, onOpenChange }: Props) {
     dependencies.candidatos === 0 &&
     dependencies.agendamentos === 0 &&
     dependencies.entrevistas === 0
+
+  const totalRodadas = useMemo(() => (job ? parseEtapas(job.etapas).length : 0), [job])
+
+  const hasJanela = useMemo(() => {
+    if (!job?.janela) return false
+    if (
+      typeof job.janela === 'object' &&
+      Object.keys(job.janela as Record<string, unknown>).length === 0
+    )
+      return false
+    return true
+  }, [job])
+
+  const deadlineFormatted = useMemo(() => {
+    if (!job?.dataLimite) return 'sem prazo'
+    return new Date(job.dataLimite).toLocaleDateString('pt-BR')
+  }, [job])
 
   useEffect(() => {
     if (open && jobId) {
@@ -266,148 +273,42 @@ export function JobProfileSheet({ jobId, open, onOpenChange }: Props) {
 
           <div className="space-y-2">
             <h4 className="text-sm font-semibold text-slate-700">Funil de candidatos</h4>
-            <JobFunnelSummary candidates={jobCandidates} />
+            <JobFunnelSummary candidates={jobCandidates} etapas={job.etapas} />
           </div>
 
-          {isEditing ? (
-            <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-slate-700">Editar vaga</h4>
-              <div className="space-y-2">
-                <Label htmlFor="titulo">Título</Label>
-                <Input
-                  id="titulo"
-                  value={form.titulo}
-                  onChange={(e) => setForm({ ...form, titulo: e.target.value })}
-                />
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-slate-700">Configuração</h4>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-lg border p-3 text-center">
+                <p className="text-xs text-slate-500">Rodadas</p>
+                <p className="text-lg font-bold text-slate-900">
+                  {totalRodadas > 0 ? totalRodadas : 'nenhuma'}
+                </p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="descricao">Descrição</Label>
-                <Textarea
-                  id="descricao"
-                  value={form.descricao}
-                  onChange={(e) => setForm({ ...form, descricao: e.target.value })}
-                  rows={3}
-                />
+              <div className="rounded-lg border p-3 text-center">
+                <p className="text-xs text-slate-500">Disponibilidade</p>
+                <p
+                  className={`text-sm font-bold ${hasJanela ? 'text-slate-900' : 'text-orange-600'}`}
+                >
+                  {hasJanela ? 'configurada' : 'sem janela'}
+                </p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="empresa">Empresa</Label>
-                  <Input
-                    id="empresa"
-                    value={form.empresa}
-                    onChange={(e) => setForm({ ...form, empresa: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cargo">Cargo</Label>
-                  <Input
-                    id="cargo"
-                    value={form.cargo}
-                    onChange={(e) => setForm({ ...form, cargo: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="aberta">Aberta</SelectItem>
-                    <SelectItem value="pausada">Pausada</SelectItem>
-                    <SelectItem value="fechada">Fechada</SelectItem>
-                    <SelectItem value="arquivada">Arquivada</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="data_limite">Prazo</Label>
-                <Input
-                  id="data_limite"
-                  type="date"
-                  value={form.data_limite}
-                  onChange={(e) => setForm({ ...form, data_limite: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-3 border-t pt-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-semibold">Faixa Salarial</Label>
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="salario_nd"
-                      checked={form.salario_nao_declarado}
-                      onCheckedChange={(checked) =>
-                        setForm({ ...form, salario_nao_declarado: checked === true })
-                      }
-                    />
-                    <Label htmlFor="salario_nd" className="text-xs text-slate-500 cursor-pointer">
-                      Faixa salarial não declarada
-                    </Label>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Salário mínimo</Label>
-                    <Input
-                      type="number"
-                      placeholder="0,00"
-                      disabled={form.salario_nao_declarado}
-                      value={form.salario_min}
-                      onChange={(e) => setForm({ ...form, salario_min: e.target.value })}
-                      className={form.salario_nao_declarado ? 'opacity-50' : ''}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Salário máximo</Label>
-                    <Input
-                      type="number"
-                      placeholder="0,00"
-                      disabled={form.salario_nao_declarado}
-                      value={form.salario_max}
-                      onChange={(e) => setForm({ ...form, salario_max: e.target.value })}
-                      className={form.salario_nao_declarado ? 'opacity-50' : ''}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Moeda</Label>
-                    <Select
-                      value={form.salario_moeda}
-                      onValueChange={(v) => setForm({ ...form, salario_moeda: v })}
-                      disabled={form.salario_nao_declarado}
-                    >
-                      <SelectTrigger className={form.salario_nao_declarado ? 'opacity-50' : ''}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="BRL">BRL (R$)</SelectItem>
-                        <SelectItem value="USD">USD ($)</SelectItem>
-                        <SelectItem value="EUR">EUR (€)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={handleSave} disabled={loading} className="flex-1">
-                  {loading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Pencil className="w-4 h-4" />
-                  )}{' '}
-                  Salvar
-                </Button>
-                <Button variant="outline" onClick={() => setIsEditing(false)}>
-                  Cancelar
-                </Button>
+              <div className="rounded-lg border p-3 text-center">
+                <p className="text-xs text-slate-500">Prazo</p>
+                <p className="text-sm font-bold text-slate-900">{deadlineFormatted}</p>
               </div>
             </div>
-          ) : (
-            <Button variant="outline" className="w-full" onClick={() => setIsEditing(true)}>
-              <Pencil className="w-4 h-4 mr-2" /> Editar vaga
+            <Button asChild className="w-full">
+              <Link to={`/vagas/${jobId}?tab=info`} onClick={() => onOpenChange(false)}>
+                <Settings2 className="w-4 h-4 mr-2" />
+                Abrir a vaga para configurar
+              </Link>
             </Button>
-          )}
+            <p className="text-xs text-slate-500 text-center">
+              Título, descrição, prazo, rodadas, perguntas e disponibilidade se editam na aba Info
+              da vaga.
+            </p>
+          </div>
 
           {job.id && job.tenantId && (
             <>
@@ -427,17 +328,6 @@ export function JobProfileSheet({ jobId, open, onOpenChange }: Props) {
                   }}
                 />
               </div>
-            </>
-          )}
-
-          {job.id && (
-            <>
-              <Separator />
-              <JobAvailabilitySection
-                jobId={job.id}
-                initialJanela={job.janela}
-                initialMaxAgendamentos={job.maxAgendamentos}
-              />
             </>
           )}
         </div>
