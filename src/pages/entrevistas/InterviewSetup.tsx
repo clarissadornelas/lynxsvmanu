@@ -162,6 +162,20 @@ export default function InterviewSetup() {
     loadPareceres()
   }, [tenantId])
 
+  const rodadaDoCandidato = (candId: string): number => {
+    const c = candidatos.find((x) => x.id === candId)
+    const n = c?.etapa_atual
+    return typeof n === 'number' && n > 0 ? n : 1
+  }
+
+  const entrevistaDaRodada = (candId: string, vagaId: string) =>
+    entrevistas.find(
+      (e) =>
+        e.candidato_id === candId &&
+        e.vaga_id === vagaId &&
+        (e.rodada ?? 1) === rodadaDoCandidato(candId),
+    )
+
   const proximasEntrevistas = useMemo(() => {
     return agendamentos
       .filter((a) => ['agendada', 'confirmada'].includes(a.status))
@@ -169,9 +183,7 @@ export default function InterviewSetup() {
       .map((a) => {
         const cand = candidatos.find((c) => c.id === a.candidato_id)
         const vaga = vagas.find((v) => v.id === a.vaga_id)
-        const ent = entrevistas.find(
-          (e) => e.candidato_id === a.candidato_id && e.vaga_id === a.vaga_id,
-        )
+        const ent = entrevistaDaRodada(a.candidato_id, a.vaga_id)
         return { agendamento: a, candidato: cand, vaga, entrevista: ent }
       })
   }, [agendamentos, candidatos, vagas, entrevistas])
@@ -184,7 +196,9 @@ export default function InterviewSetup() {
       analisada: 0,
     }
     for (const cand of candidatos) {
-      const ent = entrevistas.find((e) => e.candidato_id === cand.id)
+      const ent = entrevistas.find(
+        (e) => e.candidato_id === cand.id && (e.rodada ?? 1) === rodadaDoCandidato(cand.id),
+      )
       const apt = agendamentos.find((a) => a.candidato_id === cand.id && a.status === 'agendada')
       const stage = deriveCopilotStage(ent, apt)
       counts[stage]++
@@ -203,7 +217,7 @@ export default function InterviewSetup() {
         analisada: 0,
       }
       for (const cand of vagaCands) {
-        const ent = entrevistas.find((e) => e.candidato_id === cand.id && e.vaga_id === vaga.id)
+        const ent = entrevistaDaRodada(cand.id, vaga.id)
         const apt = agendamentos.find(
           (a) => a.candidato_id === cand.id && a.vaga_id === vaga.id && a.status === 'agendada',
         )
@@ -220,7 +234,7 @@ export default function InterviewSetup() {
     let pool = candidatos.filter((c) => c.vaga_id === selectedVagaId)
     if (!showFullPool) {
       pool = pool.filter((c) => {
-        const ent = entrevistas.find((e) => e.candidato_id === c.id && e.vaga_id === selectedVagaId)
+        const ent = entrevistaDaRodada(c.id, selectedVagaId)
         const apt = agendamentos.find(
           (a) => a.candidato_id === c.id && a.vaga_id === selectedVagaId && a.status === 'agendada',
         )
@@ -233,7 +247,7 @@ export default function InterviewSetup() {
   const handleAction = async (candId: string, vagaId: string) => {
     setActionLoading(candId)
     try {
-      const existing = entrevistas.find((e) => e.candidato_id === candId && e.vaga_id === vagaId)
+      const existing = entrevistaDaRodada(candId, vagaId)
       if (existing) {
         navigate(`/entrevistas/${existing.id}`)
         return
@@ -246,6 +260,7 @@ export default function InterviewSetup() {
           tenant_id: vaga.tenant_id,
           vaga_id: vagaId,
           candidato_id: candId,
+          rodada: rodadaDoCandidato(candId),
           status: 'aguardando',
         })
         .select('id')
@@ -529,9 +544,7 @@ export default function InterviewSetup() {
                 <ScrollArea className="h-[400px]">
                   <div className="divide-y divide-slate-100">
                     {rankedCandidates.map((cand, idx) => {
-                      const ent = entrevistas.find(
-                        (e) => e.candidato_id === cand.id && e.vaga_id === selectedVagaId,
-                      )
+                      const ent = entrevistaDaRodada(cand.id, selectedVagaId)
                       const apt = agendamentos.find(
                         (a) =>
                           a.candidato_id === cand.id &&

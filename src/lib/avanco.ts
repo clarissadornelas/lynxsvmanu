@@ -100,7 +100,31 @@ export async function avancarRodada(params: AvancarRodadaParams): Promise<Result
 
   await carimbarDecisao(entrevistaId, 'avancou', semParecer)
 
-  return { success: true, eventoOk: !evtErr, erro: evtErr?.message }
+  const { data: jaExiste } = await supabase
+    .from('entrevistas')
+    .select('id')
+    .eq('candidato_id', candidatoId)
+    .eq('vaga_id', vagaId)
+    .eq('rodada', proximaRodada)
+    .maybeSingle()
+
+  let entrevistaCriadaErro: string | undefined
+  if (!jaExiste) {
+    const { error: novaErr } = await supabase.from('entrevistas').insert({
+      tenant_id: tenantId,
+      vaga_id: vagaId,
+      candidato_id: candidatoId,
+      rodada: proximaRodada,
+      status: 'aguardando',
+    })
+    if (novaErr) entrevistaCriadaErro = novaErr.message
+  }
+
+  return {
+    success: true,
+    eventoOk: !evtErr,
+    erro: evtErr?.message || entrevistaCriadaErro,
+  }
 }
 
 export async function mandarParaShortlist(params: ShortlistParams): Promise<ResultadoDecisao> {
