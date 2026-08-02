@@ -181,10 +181,14 @@ Deno.serve(async (req: Request) => {
     }
 
     if (parsedEvents.length > 0) {
+      // Privacy: external calendar event titles are never stored in the database.
+      // The connected agenda may be personal and appointment subjects (e.g. medical,
+      // therapy, confidential meetings) do not belong to this product — only the
+      // occupied time interval is needed for free-slot calculation.
       const rows = parsedEvents.map((e) => ({
         agenda_externa_id,
         tenant_id: tenantId,
-        titulo: e.titulo,
+        titulo: null,
         inicio: e.inicio,
         fim: e.fim,
       }))

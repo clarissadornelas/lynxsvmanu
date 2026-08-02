@@ -284,7 +284,8 @@ export default function Agenda() {
         const endDate = new Date(e.fim)
         return {
           id: e.id,
-          title: e.titulo || 'Evento externo',
+          // PRIVACIDADE: evento de agenda externa nunca mostra assunto. So ocupado.
+          title: 'Ocupado',
           type: 'Externo' as EventType,
           hour: startDate.getHours(),
           date: startDate,
