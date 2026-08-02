@@ -27,9 +27,6 @@ import {
   CheckCircle2,
   Activity,
   Download,
-  Check,
-  X,
-  Clock,
   Video,
   PhoneOff,
   AlertTriangle,
@@ -445,23 +442,6 @@ export default function InterviewRoom() {
     document.body.removeChild(element)
   }
 
-  const handleFinalize = async (recommendation: string) => {
-    if (!entrevista || !candidato) return
-    setAnalyzing(true)
-    const crmStatus =
-      recommendation === 'Aprovado'
-        ? 'entrevistado'
-        : recommendation === 'Reprovado'
-          ? 'reprovado'
-          : 'entrevistado'
-    await supabase.from('candidatos').update({ status: crmStatus }).eq('id', candidato.id)
-    await supabase.from('entrevistas').update({ status: 'entregue' }).eq('id', id)
-    setEntrevista({ ...entrevista, status: 'entregue' })
-    toast.success('Recomendação finalizada e CRM atualizado!')
-    setAnalyzing(false)
-    navigate('/entrevistas')
-  }
-
   useEffect(() => {
     return () => {
       if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop())
@@ -796,7 +776,7 @@ export default function InterviewRoom() {
                   className="bg-emerald-600 hover:bg-emerald-700 text-white mr-2"
                   onClick={() => navigate(`/avaliar/${id}`)}
                 >
-                  Avaliar entrevista
+                  Analisar e decidir rodada
                 </Button>
                 <Button
                   size="lg"
@@ -1063,42 +1043,21 @@ export default function InterviewRoom() {
           </Card>
 
           {entrevista.status === 'analisada' && (
-            <Card className="border-emerald-100">
-              <CardHeader className="bg-emerald-50/30">
-                <CardTitle className="text-lg">Sincronizar com CRM</CardTitle>
-                <CardDescription>Qual é a sua decisão final sobre o candidato?</CardDescription>
+            <Card className="border-indigo-100">
+              <CardHeader className="bg-indigo-50/30">
+                <CardTitle className="text-lg">Decisao desta rodada</CardTitle>
+                <CardDescription>
+                  A decisao sobre o candidato acontece na tela de analise da rodada, junto com a
+                  avaliacao e o parecer da IA.
+                </CardDescription>
               </CardHeader>
-              <CardContent className="flex flex-wrap gap-4 pt-6">
+              <CardContent className="pt-6">
                 <Button
                   size="lg"
                   className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  onClick={() => handleFinalize('Aprovado')}
-                  disabled={analyzing}
+                  onClick={() => navigate(`/avaliar/${id}`)}
                 >
-                  {analyzing ? (
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  ) : (
-                    <Check className="w-5 h-5 mr-2" />
-                  )}{' '}
-                  Aprovar
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-amber-500 text-amber-700 hover:bg-amber-50"
-                  onClick={() => handleFinalize('Em Análise')}
-                  disabled={analyzing}
-                >
-                  <Clock className="w-5 h-5 mr-2" /> Manter em Análise
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-red-200 text-red-600 hover:bg-red-50"
-                  onClick={() => handleFinalize('Reprovado')}
-                  disabled={analyzing}
-                >
-                  <X className="w-5 h-5 mr-2" /> Reprovar
+                  Analisar e decidir rodada
                 </Button>
               </CardContent>
             </Card>

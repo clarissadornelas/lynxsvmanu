@@ -987,6 +987,9 @@ export type Database = {
           avaliador_id: string | null
           candidato_id: string
           criado_em: string
+          decisao: string | null
+          decisao_em: string | null
+          decisao_sem_parecer: boolean
           disc: Json | null
           fireflies_id: string | null
           id: string
@@ -1008,6 +1011,9 @@ export type Database = {
           avaliador_id?: string | null
           candidato_id: string
           criado_em?: string
+          decisao?: string | null
+          decisao_em?: string | null
+          decisao_sem_parecer?: boolean
           disc?: Json | null
           fireflies_id?: string | null
           id?: string
@@ -1029,6 +1035,9 @@ export type Database = {
           avaliador_id?: string | null
           candidato_id?: string
           criado_em?: string
+          decisao?: string | null
+          decisao_em?: string | null
+          decisao_sem_parecer?: boolean
           disc?: Json | null
           fireflies_id?: string | null
           id?: string
