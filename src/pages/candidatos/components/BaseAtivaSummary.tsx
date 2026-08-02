@@ -132,74 +132,81 @@ export function BaseAtivaSummary({ baseAtiva }: { baseAtiva: any[] }) {
   return (
     <TooltipProvider>
       <div className="space-y-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="border-y py-3 grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x">
           <Tooltip>
             <TooltipTrigger asChild>
-              <Card className="border-amber-300 bg-amber-50 cursor-help">
-                <CardContent className="p-4 flex items-center gap-4">
-                  <AlertTriangle className="w-8 h-8 text-amber-600 shrink-0" />
-                  <div className="flex-1">
-                    <span className="text-sm font-semibold text-amber-900">
-                      Follow-ups atrasados
-                    </span>
-                    <p className="text-3xl font-bold text-amber-700">{stats.delayed}</p>
-                  </div>
-                  <p className="text-xs text-amber-700/70 text-right">
-                    {stats.delayed - stats.neverContacted} atrasados
-                    <br />· {stats.neverContacted} nunca contatados
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="px-4 flex flex-col cursor-help">
+                <span className="text-3xl font-bold text-red-700 tabular-nums">
+                  {stats.emRisco}
+                </span>
+                <span className="text-sm font-semibold text-red-900">Em risco</span>
+                <span className="text-xs text-red-700/70">
+                  {stats.emAtencao > 0 ? `${stats.emAtencao} em atenção` : 'avaliação manual'}
+                </span>
+              </div>
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">
               <p>
-                Talentos onde opt_out=false e (último ping + cadência &lt; hoje OU nunca contatados
-                com consentimento=true). Ciclos encerrados são excluídos.
+                Talentos com sentimento = 'risco'. O engajamento pode estar perdido e o talento pode
+                sair da base.
               </p>
             </TooltipContent>
           </Tooltip>
 
           <Tooltip>
             <TooltipTrigger asChild>
-              <Card className="border-red-300 bg-red-50 cursor-help">
-                <CardContent className="p-4 flex items-center gap-4">
-                  <AlertCircle className="w-8 h-8 text-red-600 shrink-0" />
-                  <div className="flex-1">
-                    <span className="text-sm font-semibold text-red-900">Em risco</span>
-                    <p className="text-3xl font-bold text-red-700">{stats.emRisco}</p>
-                  </div>
-                  <p className="text-xs text-red-700/70 text-right">
-                    {stats.emAtencao > 0 ? `· ${stats.emAtencao} em atenção` : 'Avaliação manual'}
-                  </p>
-                </CardContent>
-              </Card>
+              <div className="px-4 flex flex-col cursor-help">
+                <span className="text-3xl font-bold text-orange-600 tabular-nums">
+                  {stats.delayed}
+                </span>
+                <span className="text-sm font-semibold text-orange-900">Cadência atrasada</span>
+                <span className="text-xs text-orange-700/70">
+                  {stats.delayed - stats.neverContacted} vencidos · {stats.neverContacted} nunca
+                  contatados
+                </span>
+              </div>
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">
               <p>
-                Talentos com sentimento = 'risco'. Indica que o engajamento pode estar perdido e o
-                talento pode sair da base.
+                opt_out=false e (último ping + cadência &lt; hoje OU nunca contatados com
+                consentimento=true). Ciclos encerrados são excluídos.
               </p>
             </TooltipContent>
           </Tooltip>
+
+          <div className="px-4 flex flex-col">
+            <span className="text-3xl font-bold text-slate-700 tabular-nums">{stats.naBase}</span>
+            <span className="text-sm font-semibold text-slate-600">Pessoas na base</span>
+            <span className="text-xs text-slate-500">{stats.emDia} em dia</span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {smallCards.map((card) => (
-            <Tooltip key={card.label}>
-              <TooltipTrigger asChild>
-                <StatCard
-                  icon={card.icon}
-                  label={card.label}
-                  value={card.value}
-                  color={card.color}
-                />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{card.tooltip}</p>
-              </TooltipContent>
-            </Tooltip>
-          ))}
-        </div>
+        <details>
+          <summary className="flex items-center cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+            <span className="text-sm font-medium text-slate-600">Outros números</span>
+            <span className="text-xs text-slate-400 ml-2">
+              {smallCards.map((c) => `${c.label.toLowerCase()} ${c.value}`).join(' · ')}
+            </span>
+            <span className="ml-auto text-xs text-slate-400">abrir</span>
+          </summary>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-3">
+            {smallCards.map((card) => (
+              <Tooltip key={card.label}>
+                <TooltipTrigger asChild>
+                  <StatCard
+                    icon={card.icon}
+                    label={card.label}
+                    value={card.value}
+                    color={card.color}
+                  ></StatCard>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{card.tooltip}</p>
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+        </details>
 
         {isEmpty && (
           <p className="text-center text-sm text-slate-400 py-2">Nenhum talento na base ainda</p>
