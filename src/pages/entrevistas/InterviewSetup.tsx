@@ -405,23 +405,18 @@ export default function InterviewSetup() {
           </Card>
         ) : null}
 
-        {/* Pipeline Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Estágios do Copiloto */}
+        <div className="flex flex-wrap items-center gap-2">
           {COPILOT_STAGES.map((stage) => (
             <Tooltip key={stage.id}>
               <TooltipTrigger asChild>
-                <Card className="border-slate-200 cursor-help">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={cn('w-2.5 h-2.5 rounded-full', stage.dotClass)} />
-                      <span className="text-xs font-medium text-slate-600">{stage.label}</span>
-                    </div>
-                    <p className={cn('text-3xl font-bold leading-none', stage.textClass)}>
-                      {pipelineCounts[stage.id]}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">{stage.hint}</p>
-                  </CardContent>
-                </Card>
+                <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 cursor-help">
+                  <span className={cn('w-2 h-2 rounded-full', stage.dotClass)} />
+                  <span className="text-xs font-medium text-slate-600">{stage.label}</span>
+                  <span className={cn('text-xs font-semibold tabular-nums', stage.textClass)}>
+                    {pipelineCounts[stage.id]}
+                  </span>
+                </div>
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
                 <p className="font-semibold">{stage.label}</p>

@@ -5,10 +5,11 @@ import { ExpandableJobCard } from '@/components/ExpandableJobCard'
 import { JobProfileSheet } from '@/components/JobProfileSheet'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Loader2, Users, Briefcase, TrendingUp, Plus } from 'lucide-react'
-import { MetricCard } from '@/components/MetricCard'
+import { Loader2, Plus } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import { PrecisaDeVoce } from '@/components/dashboard/PrecisaDeVoce'
+import { KANBAN_COLUMNS, deriveKanbanColumn, parseEtapas, COR_FASE } from '@/lib/funnel-phases'
+import type { KanbanColumnId } from '@/lib/funnel-phases'
 
 export default function Dashboard() {
   const { jobs, candidates, loading, reload } = useRecruitmentStore()
@@ -45,18 +46,37 @@ export default function Dashboard() {
     return Array.from(map.values())
   }, [jobs])
 
-  const kpis = useMemo(() => {
-    const inInterview = candidates.filter(
-      (c) => c.status === 'em_teste' || c.status === 'entrevistado',
-    ).length
-    const hired = candidates.filter((c) => c.status === 'contratado').length
-    return {
-      totalJobs: jobs.length,
-      totalCandidates: candidates.length,
-      inInterview,
-      hired,
+  const funil = useMemo(() => {
+    const porColuna = {} as Record<KanbanColumnId, number>
+    for (const col of KANBAN_COLUMNS) {
+      porColuna[col.id] = 0
     }
+    const ativos = candidates.filter((c) => c.situacao !== 'eliminado')
+    for (const c of ativos) {
+      const job = jobs.find((j) => j.id === c.jobId)
+      const totalRodadas = job ? parseEtapas(job.etapas).length : 0
+      const col = deriveKanbanColumn(
+        c.status,
+        c.etapaAtual,
+        totalRodadas,
+        c.shortlistOrdem,
+        c.faseSaida,
+      )
+      porColuna[col] += 1
+    }
+    return { ativos: ativos.length, porColuna }
   }, [jobs, candidates])
+
+  const kpis = useMemo(() => {
+    const vagasAbertas = jobs.filter((j) => j.status === 'aberta').length
+    const contratados = candidates.filter((c) => c.status === 'contratado').length
+    return {
+      vagasAbertas,
+      totalJobs: jobs.length,
+      ativos: funil.ativos,
+      contratados,
+    }
+  }, [jobs, candidates, funil])
 
   if (loading) {
     return (
@@ -80,43 +100,74 @@ export default function Dashboard() {
 
       <PrecisaDeVoce />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard
-          title="Vagas no acervo"
-          value={kpis.totalJobs}
-          icon={Briefcase}
-          tooltip="Total de vagas cadastradas no sistema"
-          titleClassName="text-slate-600"
-          iconClassName="text-slate-400"
-          valueClassName="text-slate-900"
-        />
-        <MetricCard
-          title="Candidatos"
-          value={kpis.totalCandidates}
-          icon={Users}
-          tooltip="Total de candidatos no pipeline de recrutamento"
-          titleClassName="text-slate-600"
-          iconClassName="text-slate-400"
-          valueClassName="text-slate-900"
-        />
-        <MetricCard
-          title="Em entrevista/teste"
-          value={kpis.inInterview}
-          icon={TrendingUp}
-          tooltip="Candidatos atualmente em processo de entrevista ou teste"
-          titleClassName="text-slate-600"
-          iconClassName="text-slate-400"
-          valueClassName="text-slate-900"
-        />
-        <MetricCard
-          title="Contratados"
-          value={kpis.hired}
-          icon={TrendingUp}
-          tooltip="Candidatos que foram contratados com sucesso"
-          titleClassName="text-slate-600"
-          iconClassName="text-slate-400"
-          valueClassName="text-amber-600"
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <button
+          className="flex flex-col items-start gap-1 p-5 rounded-xl border border-slate-200 bg-white text-left transition-colors hover:bg-slate-50"
+          onClick={() => navigate('/vagas')}
+        >
+          <span className="text-sm text-slate-500">Vagas abertas</span>
+          <span className="text-3xl font-bold text-slate-900">{kpis.vagasAbertas}</span>
+          <span className="text-xs text-slate-400">de {kpis.totalJobs} no acervo</span>
+        </button>
+        <button
+          className="flex flex-col items-start gap-1 p-5 rounded-xl border border-slate-200 bg-white text-left transition-colors hover:bg-slate-50"
+          onClick={() => navigate('/candidatos')}
+        >
+          <span className="text-sm text-slate-500">Candidatos ativos no funil</span>
+          <span className="text-3xl font-bold text-slate-900">{kpis.ativos}</span>
+          <span className="text-xs text-slate-400">quem saiu fica fora da conta</span>
+        </button>
+        <div className="flex flex-col items-start gap-1 p-5 rounded-xl border border-slate-200 bg-white">
+          <span className="text-sm text-slate-500">Contratados</span>
+          <span className="text-3xl font-bold text-amber-600">{kpis.contratados}</span>
+          <span className="text-xs text-slate-400">fecharam vaga</span>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-lg font-semibold text-slate-900">Funil consolidado</h3>
+            <span className="text-sm text-slate-400">{funil.ativos} ativos</span>
+          </div>
+          <span className="text-xs text-slate-400">clique num trecho para abrir a lista</span>
+        </div>
+        <div className="flex w-full gap-1 h-10">
+          {KANBAN_COLUMNS.map((col) => {
+            const count = funil.porColuna[col.id]
+            const bg = count > 0 ? COR_FASE[col.id] : '#F1EEEB'
+            const flex = funil.ativos > 0 ? Math.max(count, 0) : 1
+            return (
+              <button
+                key={col.id}
+                className="flex items-center justify-center rounded-md text-xs font-semibold transition-opacity hover:opacity-80 min-w-[2rem]"
+                style={{
+                  backgroundColor: bg,
+                  flex: funil.ativos > 0 ? flex : 1,
+                  color: count > 0 ? '#fff' : '#999',
+                }}
+                onClick={() => navigate(`/candidatos?coluna=${col.id}`)}
+              >
+                {count > 0 ? count : ''}
+              </button>
+            )
+          })}
+        </div>
+        <div className="flex w-full gap-1 mt-1.5">
+          {KANBAN_COLUMNS.map((col) => {
+            const count = funil.porColuna[col.id]
+            const flex = funil.ativos > 0 ? Math.max(count, 0) : 1
+            return (
+              <span
+                key={col.id}
+                className="text-[10px] leading-tight text-center text-slate-500 min-w-[2rem]"
+                style={{ flex: funil.ativos > 0 ? flex : 1 }}
+              >
+                {col.label}
+              </span>
+            )
+          })}
+        </div>
       </div>
 
       <div>

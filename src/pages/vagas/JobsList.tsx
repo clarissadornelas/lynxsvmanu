@@ -199,33 +199,28 @@ export default function JobsList() {
   const stalledConvCount = stalledConvCandidateIds.size
   const funnelInertiaCount = funnelInertiaCandidateIds.size
 
-  const summaryCards = [
-    {
-      label: 'Vagas Ativas',
-      value: activeJobs,
-      color: 'text-emerald-600',
-      tooltip: 'Número de vagas ativas no sistema. Fonte: tabela de vagas.',
-    },
-    ...KANBAN_COLUMNS.map((col) => ({
-      label: col.label,
-      value: candidates.filter((c) => {
-        if (c.situacao === 'eliminado') return false
-        const job = jobs.find((j) => j.id === c.jobId)
-        const totalRodadas = parseEtapas(job?.etapas).length
-        return (
-          deriveKanbanColumn(
-            c.status,
-            c.etapaAtual,
-            totalRodadas,
-            c.shortlistOrdem,
-            c.faseSaida,
-          ) === col.id
-        )
-      }).length,
-      color: 'text-slate-700',
-      tooltip: col.tooltip,
-    })),
-  ]
+  const contagemPorColuna = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const col of KANBAN_COLUMNS) {
+      counts[col.id] = 0
+    }
+    for (const c of candidates) {
+      if (c.situacao === 'eliminado') continue
+      const job = jobs.find((j) => j.id === c.jobId)
+      const totalRodadas = parseEtapas(job?.etapas).length
+      const colId = deriveKanbanColumn(
+        c.status,
+        c.etapaAtual,
+        totalRodadas,
+        c.shortlistOrdem,
+        c.faseSaida,
+      )
+      counts[colId] = (counts[colId] || 0) + 1
+    }
+    return counts
+  }, [candidates, jobs])
+
+  const totalNoFunil = Object.values(contagemPorColuna).reduce((a, b) => a + b, 0)
 
   const convCards = [
     {
@@ -342,67 +337,78 @@ export default function JobsList() {
         </Link>
       </PageHeader>
 
-      <Card className="border-amber-300 bg-amber-50">
-        <CardContent className="p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <p className="text-xs text-slate-500">Requerem atenção</p>
-                  <InfoIcon
-                    text={
-                      'Conversas pausadas ou sem resposta há mais de 24h, mais candidatos em shortlist parados há mais de 3 dias úteis. Fonte: conversas e eventos de mudança de fase.'
-                    }
-                  />
-                </div>
-                <p className="text-3xl font-bold text-amber-700 mt-1">{attentionTotal}</p>
-                <p className="text-xs text-amber-600 mt-1">
-                  {stalledConvCount} em conversa travada · {funnelInertiaCount} parados no funil
-                </p>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-amber-300 text-amber-700 hover:bg-amber-100"
-              onClick={() => navigate('/conversas')}
-            >
-              Ver detalhes
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="space-y-2">
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-          {summaryCards.map((card) => (
-            <Card key={card.label}>
-              <CardContent className="p-3">
-                <div className="flex items-start gap-1.5 min-h-[2.5rem]">
-                  <p className="text-xs text-slate-500 leading-tight">{card.label}</p>
-                  <InfoIcon text={card.tooltip} />
-                </div>
-                <p className={cn('text-2xl font-bold', card.color)}>{card.value}</p>
-              </CardContent>
-            </Card>
-          ))}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <button
+          onClick={() => navigate('/conversas')}
+          className="text-left p-4 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 transition-colors cursor-pointer"
+        >
+          <p className="text-xs text-slate-500">Requerem atenção</p>
+          <p className="text-3xl font-bold text-amber-700 mt-1">{attentionTotal}</p>
+          <p className="text-xs text-amber-600 mt-1">
+            {stalledConvCount} em conversa travada · {funnelInertiaCount} parados no funil
+          </p>
+        </button>
+        <div className="p-4 rounded-xl border border-slate-200 bg-white">
+          <p className="text-xs text-slate-500">Vagas ativas</p>
+          <p className="text-3xl font-bold text-emerald-600 mt-1">{activeJobs}</p>
+          <p className="text-xs text-slate-400 mt-1">de {jobs.length} no acervo</p>
         </div>
-
-        <p className="text-xs text-slate-400 mt-3 mb-1">Conversas</p>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-          {convCards.map((card) => (
-            <Card key={card.label}>
-              <CardContent className="p-4">
-                <div className="flex items-start gap-1.5 min-h-[2.5rem]">
-                  <p className="text-xs text-slate-500 leading-tight">{card.label}</p>
-                  <InfoIcon text={card.tooltip} />
-                </div>
-                <p className={`text-2xl font-bold ${card.color}`}>{card.value}</p>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="p-4 rounded-xl border border-slate-200 bg-white">
+          <p className="text-xs text-slate-500">Candidatos ativos</p>
+          <p className="text-3xl font-bold text-indigo-600 mt-1">{totalNoFunil}</p>
+          <p className="text-xs text-slate-400 mt-1">quem saiu fica fora da conta</p>
         </div>
       </div>
+
+      <div className="space-y-2">
+        <p className="text-xs text-slate-500">
+          Funil de todas as vagas · {totalNoFunil} candidatos
+        </p>
+        <div className="flex w-full h-3 rounded-full overflow-hidden bg-slate-100">
+          {KANBAN_COLUMNS.map((col) => {
+            const count = contagemPorColuna[col.id] ?? 0
+            if (count === 0) return null
+            const pct = totalNoFunil > 0 ? (count / totalNoFunil) * 100 : 0
+            return (
+              <Tooltip key={col.id}>
+                <TooltipTrigger asChild>
+                  <div
+                    className="h-full transition-all"
+                    style={{ width: `${pct}%`, backgroundColor: COR_FASE[col.id] }}
+                  />
+                </TooltipTrigger>
+                <TooltipContent className="text-xs">
+                  {col.label}: {count}
+                </TooltipContent>
+              </Tooltip>
+            )
+          })}
+        </div>
+      </div>
+
+      <details className="rounded-xl border border-slate-200 bg-white">
+        <summary className="cursor-pointer p-4 text-sm font-medium text-slate-700 select-none">
+          Conversas — iniciadas {convIniciadas} · em andamento {convEmAndamento} · requerem atenção{' '}
+          {convRequeremAtencao} · agendadas {convAgendadas} · encerradas {convEncerradas}
+        </summary>
+        <div className="px-4 pb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+            {convCards.map((card) => (
+              <Card key={card.label}>
+                <CardContent className="p-4">
+                  <p className="text-xs text-slate-500 leading-tight min-h-[2.5rem]">
+                    {card.label}
+                  </p>
+                  <p className={`text-2xl font-bold ${card.color}`}>{card.value}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <p className="text-xs text-slate-400 mt-3">
+            Conversas dependem do WhatsApp conectado. Zero aqui não significa erro.
+          </p>
+        </div>
+      </details>
 
       <div className="space-y-2">
         {filteredJobs.length === 0 ? (
