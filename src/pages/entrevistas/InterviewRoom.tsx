@@ -773,64 +773,10 @@ export default function InterviewRoom() {
               <div className="flex flex-wrap justify-center gap-2">
                 <Button
                   size="lg"
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white mr-2"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
                   onClick={() => navigate(`/avaliar/${id}`)}
                 >
                   Analisar e decidir rodada
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  onClick={async () => {
-                    setAnalyzing(true)
-                    try {
-                      await supabase
-                        .from('entrevistas')
-                        .update({ status: 'em_analise' })
-                        .eq('id', id)
-                      setEntrevista({ ...entrevista, status: 'em_analise' })
-                      const { data: aiData, error: aiError } = await supabase.functions.invoke(
-                        'copilot-analyze-interview',
-                        {
-                          body: { entrevista_id: id },
-                        },
-                      )
-                      if (aiError || aiData?.error) {
-                        await supabase
-                          .from('entrevistas')
-                          .update({ status: 'concluida' })
-                          .eq('id', id)
-                        setEntrevista({ ...entrevista, status: 'concluida' })
-                        const inlineAiErrMsg = aiError?.message || aiData?.error || ''
-                        if (
-                          aiError instanceof TypeError ||
-                          inlineAiErrMsg.includes('Failed to fetch') ||
-                          inlineAiErrMsg.includes('Relay Error')
-                        ) {
-                          toast.error(
-                            'Erro de conexão: Não foi possível alcançar o serviço de IA. Verifique sua internet ou tente novamente mais tarde.',
-                          )
-                        } else {
-                          toast.error(
-                            'Entrevista registrada. A análise da IA falhou e pode ser executada novamente.',
-                          )
-                        }
-                      } else {
-                        toast.success('Análise iniciada! Aguarde...')
-                      }
-                    } catch {
-                      toast.error('Erro ao processar análise')
-                    }
-                    setAnalyzing(false)
-                  }}
-                  disabled={analyzing}
-                >
-                  {analyzing ? (
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  ) : (
-                    <Activity className="w-5 h-5 mr-2" />
-                  )}
-                  Executar Análise com IA
                 </Button>
               </div>
             </CardContent>

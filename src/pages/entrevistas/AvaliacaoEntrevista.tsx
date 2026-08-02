@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/PageHeader'
 import BlocoDecisaoRodada from '@/components/entrevistas/BlocoDecisaoRodada'
 import { Loader2, Save, FileText, CheckSquare, MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
+import useRecruitmentStore from '@/stores/useRecruitmentStore'
 import {
   resolverPerguntas,
   montarAvaliacaoVazia,
@@ -52,6 +53,7 @@ function extrairPerguntasConfig(
 export default function AvaliacaoEntrevista() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { reload } = useRecruitmentStore()
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -342,7 +344,10 @@ export default function AvaliacaoEntrevista() {
           rodadaAtual={rodadaAtual}
           totalRodadas={totalRodadas}
           proximaRodada={proximaRodada}
-          onDecidido={() => navigate(-1)}
+          onDecidido={async () => {
+            await reload()
+            navigate(-1)
+          }}
         />
       )}
     </div>

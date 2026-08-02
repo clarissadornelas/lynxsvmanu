@@ -112,17 +112,16 @@ export default function KanbanTab({
 
       const { data: ents } = await supabase
         .from('entrevistas')
-        .select('id, candidato_id, decisao, decisao_em, criado_em')
+        .select('id, candidato_id, criado_em')
         .in('candidato_id', ids)
         .eq('vaga_id', jobId)
-        .in('status', ['analisada', 'entregue'])
+        .not('avaliada_em', 'is', null)
+        .is('decisao', null)
         .order('criado_em', { ascending: false })
 
       const pendente: Record<string, { entrevistaId: string }> = {}
       for (const ent of ents || []) {
-        if (!ent.decisao && !ent.decisao_em) {
-          pendente[ent.candidato_id] = { entrevistaId: ent.id }
-        }
+        pendente[ent.candidato_id] = { entrevistaId: ent.id }
       }
       setRodadaPendente(pendente)
     }
@@ -150,7 +149,11 @@ export default function KanbanTab({
   const confirmarSaida = async (motivo: MotivoSaida) => {
     if (!saidaCandidatoId) return
     const c = candidates.find((cand) => cand.id === saidaCandidatoId)
-    if (!c) return
+    if (!c) {
+      toast.error('Candidato nao encontrado na lista. Recarregue a pagina e tente de novo.')
+      setSaidaCandidatoId(null)
+      return
+    }
 
     const { error: updErr } = await supabase
       .from('candidatos')
