@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import EditorRodadas from '@/components/vaga/EditorRodadas'
 import { parseEtapas, deriveKanbanColumn } from '@/lib/funnel-phases'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, Share2, Settings2 } from 'lucide-react'
+import { ChevronLeft, Settings2 } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import RankingTab from './components/RankingTab'
 import ShortlistTab from './components/ShortlistTab'
@@ -12,7 +12,7 @@ import KanbanTab from './components/KanbanTab'
 
 export default function JobDetails() {
   const { id } = useParams<{ id: string }>()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { jobs, candidates, reload } = useRecruitmentStore()
   const initialTab = searchParams.get('tab') === 'decisao' ? 'decisao' : 'kanban'
 
@@ -38,13 +38,14 @@ export default function JobDetails() {
             <ChevronLeft className="w-4 h-4" />
           </Button>
         </Link>
-        <Button variant="outline" size="sm" className="bg-white">
-          <Share2 className="w-4 h-4 mr-2" />
-          Compartilhar Link
-        </Button>
-        <Button variant="outline" size="sm" className="bg-white">
+        <Button
+          variant="outline"
+          size="sm"
+          className="bg-white"
+          onClick={() => setSearchParams({ tab: 'info' })}
+        >
           <Settings2 className="w-4 h-4 mr-2" />
-          Configurar Job
+          Configurar vaga
         </Button>
       </PageHeader>
 

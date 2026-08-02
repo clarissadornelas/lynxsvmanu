@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { format, addDays, startOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Calendar, Clock, Settings2, CalendarPlus, Loader2 } from 'lucide-react'
+import { Calendar, Clock, Settings2, CalendarPlus, Loader2, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase/client'
@@ -82,8 +82,56 @@ export default function KanbanTab({
   const [selectedSlot, setSelectedSlot] = useState<GeneratedSlot | null>(null)
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [booking, setBooking] = useState(false)
-  const [saindoCandidato, setSaindoCandidato] = useState<Candidate | null>(null)
+  const [saidaCandidatoId, setSaidaCandidatoId] = useState<string | null>(null)
   const [saidasAbertas, setSaidasAbertas] = useState<Record<string, boolean>>({})
+  const [ultimoEvento, setUltimoEvento] = useState<Record<string, string>>({})
+  const [rodadaPendente, setRodadaPendente] = useState<Record<string, { entrevistaId: string }>>({})
+
+  useEffect(() => {
+    const ids = candidates.map((c) => c.id)
+    if (ids.length === 0) {
+      setUltimoEvento({})
+      setRodadaPendente({})
+      return
+    }
+    const load = async () => {
+      const { data: eventos } = await supabase
+        .from('candidato_eventos')
+        .select('candidato_id, criado_em')
+        .in('candidato_id', ids)
+        .eq('vaga_id', jobId)
+        .order('criado_em', { ascending: false })
+
+      const mapa: Record<string, string> = {}
+      for (const ev of eventos || []) {
+        if (!mapa[ev.candidato_id]) {
+          mapa[ev.candidato_id] = ev.criado_em
+        }
+      }
+      setUltimoEvento(mapa)
+
+      const { data: ents } = await supabase
+        .from('entrevistas')
+        .select('id, candidato_id, decisao, decisao_em, criado_em')
+        .in('candidato_id', ids)
+        .eq('vaga_id', jobId)
+        .in('status', ['analisada', 'entregue'])
+        .order('criado_em', { ascending: false })
+
+      const pendente: Record<string, { entrevistaId: string }> = {}
+      for (const ent of ents || []) {
+        if (!ent.decisao && !ent.decisao_em) {
+          pendente[ent.candidato_id] = { entrevistaId: ent.id }
+        }
+      }
+      setRodadaPendente(pendente)
+    }
+    load()
+  }, [candidates, jobId])
+
+  const saidaCandidato = saidaCandidatoId
+    ? (candidates.find((c) => c.id === saidaCandidatoId) ?? null)
+    : null
 
   const availability = getAvailabilityStatus(localJanela, localDataLimite)
   const currentJob = jobs.find((j) => j.id === jobId)
@@ -100,8 +148,9 @@ export default function KanbanTab({
     candidates.filter((c) => c.situacao === 'eliminado' && colunaDoCandidato(c) === colId)
 
   const confirmarSaida = async (motivo: MotivoSaida) => {
-    if (!saindoCandidato) return
-    const c = saindoCandidato
+    if (!saidaCandidatoId) return
+    const c = candidates.find((cand) => cand.id === saidaCandidatoId)
+    if (!c) return
 
     const { error: updErr } = await supabase
       .from('candidatos')
@@ -173,7 +222,7 @@ export default function KanbanTab({
     }
 
     toast.success('Candidato removido do processo.')
-    setSaindoCandidato(null)
+    setSaidaCandidatoId(null)
     await reload()
   }
 
@@ -185,7 +234,7 @@ export default function KanbanTab({
       : 7
 
   const tempoParaExibir = (c: Candidate): string | null => {
-    const referencia = (c as { situacaoEm?: string | null }).situacaoEm
+    const referencia = ultimoEvento[c.id] || (c as { situacaoEm?: string | null }).situacaoEm
     if (!referencia) return null
     const dias = Math.floor((Date.now() - new Date(referencia).getTime()) / 86400000)
     if (isNaN(dias) || dias < diasAlerta) return null
@@ -555,7 +604,7 @@ export default function KanbanTab({
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
-                                setSaindoCandidato(c)
+                                setSaidaCandidatoId(c.id)
                               }}
                               className="text-xs text-slate-400 hover:text-red-600 transition-colors"
                             >
@@ -563,6 +612,16 @@ export default function KanbanTab({
                             </button>
                           )}
                         </div>
+                        {rodadaPendente[c.id] && (
+                          <Link
+                            to={`/avaliar/${rodadaPendente[c.id].entrevistaId}`}
+                            className="mt-1.5 flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700 font-medium transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <AlertTriangle className="w-3 h-3" />
+                            Analisar e decidir rodada
+                          </Link>
+                        )}
                       </div>
                     )}
                   </div>
@@ -605,15 +664,15 @@ export default function KanbanTab({
       </div>
 
       <SaidaProcessoModal
-        open={saindoCandidato !== null}
+        open={saidaCandidato !== null}
         onOpenChange={(open) => {
-          if (!open) setSaindoCandidato(null)
+          if (!open) setSaidaCandidatoId(null)
         }}
-        nomeCandidato={saindoCandidato?.name ?? ''}
+        nomeCandidato={saidaCandidato?.name ?? ''}
         permiteRecusouProposta={
-          saindoCandidato !== null &&
-          (colunaDoCandidato(saindoCandidato) === 'entrevistados' ||
-            colunaDoCandidato(saindoCandidato) === 'shortlist_final')
+          saidaCandidato !== null &&
+          (colunaDoCandidato(saidaCandidato) === 'entrevistados' ||
+            colunaDoCandidato(saidaCandidato) === 'shortlist_final')
         }
         onConfirmar={confirmarSaida}
       />

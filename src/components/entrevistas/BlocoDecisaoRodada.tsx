@@ -272,7 +272,7 @@ export default function BlocoDecisaoRodada({
       })
       if (r.success) {
         if (r.baseAtivaError) {
-          toast.success(`${candidatoNome} saiu do processo, mas nao entrou na Base Ativa.`)
+          toast.warning(`${candidatoNome} saiu do processo, mas nao entrou na Base Ativa.`)
         } else {
           toast.success(`${candidatoNome} saiu do processo e foi para a Base Ativa.`)
         }

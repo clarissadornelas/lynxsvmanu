@@ -5,24 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog'
 import { PageHeader } from '@/components/PageHeader'
-import {
-  Loader2,
-  Save,
-  FileText,
-  CheckSquare,
-  MessageSquare,
-  ArrowRight,
-  ListPlus,
-  Check,
-} from 'lucide-react'
+import BlocoDecisaoRodada from '@/components/entrevistas/BlocoDecisaoRodada'
+import { Loader2, Save, FileText, CheckSquare, MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   resolverPerguntas,
@@ -70,6 +55,7 @@ export default function AvaliacaoEntrevista() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [salva, setSalva] = useState(false)
   const [candidatoNome, setCandidatoNome] = useState('')
   const [vagaTitulo, setVagaTitulo] = useState('')
   const [rodadaNome, setRodadaNome] = useState('')
@@ -81,9 +67,9 @@ export default function AvaliacaoEntrevista() {
   const [tenantIdEnt, setTenantIdEnt] = useState('')
   const [candidatoStatus, setCandidatoStatus] = useState('')
   const [rodadaAtual, setRodadaAtual] = useState(1)
+  const [totalRodadas, setTotalRodadas] = useState(1)
   const [proximaRodada, setProximaRodada] = useState<{ n: number; nome: string } | null>(null)
-  const [dialogoAberto, setDialogoAberto] = useState(false)
-  const [decidindo, setDecidindo] = useState(false)
+  const [decidida, setDecidida] = useState(false)
 
   useEffect(() => {
     async function loadData() {
@@ -113,8 +99,10 @@ export default function AvaliacaoEntrevista() {
       setVagaId(ent.vaga_id)
       setTenantIdEnt(ent.tenant_id)
       setCandidatoStatus(cand?.status || '')
+      setDecidida(!!ent.decisao)
 
       const etapas = parseEtapas(vaga?.etapas)
+      setTotalRodadas(etapas.length || 1)
       const rodada = ent.rodada || 1
       setRodadaAtual(rodada)
       const etapa = etapas.find((e) => e.n === rodada) || null
@@ -188,91 +176,9 @@ export default function AvaliacaoEntrevista() {
       toast.error('Não foi possível salvar a avaliação.')
     } else {
       toast.success('Avaliação salva.')
-      setDialogoAberto(true)
+      setSalva(true)
     }
     setSaving(false)
-  }
-
-  const handleAvancar = async () => {
-    if (!proximaRodada || !candidatoId) return
-    setDecidindo(true)
-    const { error } = await supabase.from('candidato_eventos').insert({
-      candidato_id: candidatoId,
-      vaga_id: vagaId,
-      tenant_id: tenantIdEnt,
-      tipo: 'rodada_criada',
-      de: String(rodadaAtual),
-      para: String(proximaRodada.n),
-      agente: null,
-      ator: 'avaliacao',
-    })
-    if (error) {
-      toast.warning(
-        `Avanço registrado localmente, mas o evento para o agente falhou: ${error.message}`,
-      )
-    } else {
-      toast.success(
-        `${candidatoNome} avançou para ${proximaRodada.nome}. O agente foi sinalizado para agendar.`,
-      )
-    }
-    setDecidindo(false)
-    setDialogoAberto(false)
-    navigate(-1)
-  }
-
-  const handleShortlist = async () => {
-    if (!candidatoId) return
-    setDecidindo(true)
-    const { data: maxRow } = await supabase
-      .from('candidatos')
-      .select('shortlist_ordem')
-      .eq('vaga_id', vagaId)
-      .not('shortlist_ordem', 'is', null)
-      .order('shortlist_ordem', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    const proximaOrdem = (maxRow?.shortlist_ordem ?? 0) + 1
-    const { error: updError } = await supabase
-      .from('candidatos')
-      .update({ shortlist_ordem: proximaOrdem })
-      .eq('id', candidatoId)
-    if (updError) {
-      toast.error('Não foi possível adicionar à shortlist.')
-      setDecidindo(false)
-      return
-    }
-    const { error: evError } = await supabase.from('candidato_eventos').insert({
-      candidato_id: candidatoId,
-      vaga_id: vagaId,
-      tenant_id: tenantIdEnt,
-      tipo: 'mudanca_fase',
-      de: candidatoStatus,
-      para: 'shortlist',
-      agente: null,
-      ator: 'avaliacao',
-    })
-    if (evError) {
-      toast.warning(`Na shortlist, mas o evento falhou: ${evError.message}`)
-    } else {
-      toast.success(
-        `${candidatoNome} entrou na shortlist como nº ${proximaOrdem}. Ajuste a ordem na aba Decisão.`,
-      )
-    }
-    setDecidindo(false)
-    setDialogoAberto(false)
-    navigate(-1)
-  }
-
-  const handleConcluir = () => {
-    setDialogoAberto(false)
-    navigate(-1)
-  }
-
-  const handleDialogChange = (open: boolean) => {
-    if (!open && !decidindo) {
-      setDialogoAberto(false)
-      navigate(-1)
-    }
   }
 
   if (loading) {
@@ -297,8 +203,8 @@ export default function AvaliacaoEntrevista() {
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
       <PageHeader
-        title="Avaliação de Entrevista"
-        subtitle={`${candidatoNome} • ${vagaTitulo} • ${rodadaNome}`}
+        title="Análise da rodada"
+        subtitle={`${candidatoNome} • ${vagaTitulo} • Rodada ${rodadaAtual} de ${totalRodadas} • ${rodadaNome}`}
       >
         <Badge variant="secondary" className="text-sm font-medium">
           {coberturaStr}
@@ -400,61 +306,45 @@ export default function AvaliacaoEntrevista() {
         </CardContent>
       </Card>
 
+      {decidida && !salva && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="py-4">
+            <p className="text-sm text-amber-800">
+              Esta rodada já foi decidida. A avaliação continua editável, e salvar de novo libera
+              uma nova análise.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex justify-end gap-3">
         <Button variant="outline" onClick={() => navigate(-1)}>
-          Cancelar
+          Voltar
         </Button>
-        <Button onClick={handleSave} disabled={saving}>
+        <Button onClick={handleSave} disabled={saving || salva}>
           {saving ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
           ) : (
             <Save className="w-4 h-4 mr-2" />
           )}
-          Salvar avaliação
+          {salva ? 'Avaliação salva' : 'Salvar avaliação'}
         </Button>
       </div>
 
-      <Dialog open={dialogoAberto} onOpenChange={handleDialogChange}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Avaliação salva. Próximo passo de {candidatoNome}?</DialogTitle>
-            <DialogDescription>
-              O registro desta rodada fica guardado como está. Avançar sinaliza ao agente de
-              agendamento que organize a próxima agenda.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-2 pt-2">
-            {proximaRodada && (
-              <Button onClick={handleAvancar} disabled={decidindo} className="justify-start">
-                {decidindo ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <ArrowRight className="w-4 h-4 mr-2" />
-                )}
-                Avançar para {proximaRodada.nome}
-              </Button>
-            )}
-            <Button
-              variant="secondary"
-              onClick={handleShortlist}
-              disabled={decidindo}
-              className="justify-start"
-            >
-              <ListPlus className="w-4 h-4 mr-2" />
-              Mandar para a shortlist
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleConcluir}
-              disabled={decidindo}
-              className="justify-start"
-            >
-              <Check className="w-4 h-4 mr-2" />
-              Concluir sem avançar
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {salva && id && (
+        <BlocoDecisaoRodada
+          entrevistaId={id}
+          candidatoId={candidatoId}
+          candidatoNome={candidatoNome}
+          candidatoStatus={candidatoStatus}
+          vagaId={vagaId}
+          tenantId={tenantIdEnt}
+          rodadaAtual={rodadaAtual}
+          totalRodadas={totalRodadas}
+          proximaRodada={proximaRodada}
+          onDecidido={() => navigate(-1)}
+        />
+      )}
     </div>
   )
 }
