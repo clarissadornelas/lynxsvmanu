@@ -111,6 +111,7 @@ export interface EtapaVaga {
   agenda_id: string | null
   duracao: number
   perguntas?: PerguntaEtapa[]
+  silenciadas?: string[]
 }
 
 export function parseEtapas(raw: unknown): EtapaVaga[] {
@@ -125,6 +126,9 @@ export function parseEtapas(raw: unknown): EtapaVaga[] {
         agenda_id: e.agenda_id == null ? null : String(e.agenda_id),
         duracao: typeof e.duracao === 'number' ? e.duracao : 60,
         perguntas: parsePerguntas(e.perguntas),
+        silenciadas: Array.isArray(e.silenciadas)
+          ? e.silenciadas.filter((s): s is string => typeof s === 'string')
+          : [],
       }),
     )
   parsed.sort((a, b) => a.n - b.n)
@@ -462,15 +466,63 @@ export function parsePerguntas(raw: unknown): PerguntaEtapa[] {
     .map((item) => normalizarPergunta(item))
 }
 
-export function resolverPerguntas(casa: PerguntaEtapa[], vaga: PerguntaEtapa[]): PerguntaEtapa[] {
+export function lerBancoCasa(ppRaw: unknown): Record<string, PerguntaEtapa[]> {
+  const banco: Record<string, PerguntaEtapa[]> = {}
+  if (!ppRaw || typeof ppRaw !== 'object') return banco
+  const obj = ppRaw as Record<string, unknown>
+  for (const t of TIPOS_RODADA) {
+    const raw = obj[t.valor]
+    if (Array.isArray(raw)) {
+      banco[t.valor] = parsePerguntas(raw)
+    } else if (raw && typeof raw === 'object') {
+      const sub = raw as Record<string, unknown>
+      if (Array.isArray(sub.casa)) {
+        banco[t.valor] = parsePerguntas(sub.casa)
+      } else if (Array.isArray(sub.perguntas)) {
+        banco[t.valor] = parsePerguntas(sub.perguntas)
+      } else if (Array.isArray(sub.vaga)) {
+        banco[t.valor] = parsePerguntas(sub.vaga)
+      }
+    }
+  }
+  const flat = Array.isArray(obj.casa)
+    ? parsePerguntas(obj.casa)
+    : Array.isArray(obj.perguntas)
+      ? parsePerguntas(obj.perguntas)
+      : Array.isArray(obj.vaga)
+        ? parsePerguntas(obj.vaga)
+        : null
+  if (flat) {
+    for (const t of TIPOS_RODADA) {
+      if (!banco[t.valor]) banco[t.valor] = flat
+    }
+  }
+  return banco
+}
+
+export function bancoCasaDoTipo(ppRaw: unknown, tipo: string): PerguntaEtapa[] {
+  return lerBancoCasa(ppRaw)[tipo] ?? []
+}
+
+export function resolverPerguntas(
+  casa: PerguntaEtapa[],
+  vaga: PerguntaEtapa[],
+  silenciadas: string[] = [],
+): PerguntaEtapa[] {
   const vagaById = new Map<string, PerguntaEtapa>()
   for (const p of vaga) {
     vagaById.set(p.id, p)
   }
 
+  const silenciadasSet = new Set(silenciadas)
+
   const result: PerguntaEtapa[] = []
 
   for (const pCasa of casa) {
+    if (silenciadasSet.has(pCasa.id)) {
+      vagaById.delete(pCasa.id)
+      continue
+    }
     const override = vagaById.get(pCasa.id)
     if (override) {
       result.push({

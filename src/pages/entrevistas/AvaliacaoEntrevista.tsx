@@ -14,8 +14,8 @@ import {
   resolverPerguntas,
   montarAvaliacaoVazia,
   parseAvaliacao,
-  parsePerguntas,
   parseEtapas,
+  bancoCasaDoTipo,
   NOTAS_AVALIACAO,
   notaECobertura,
   formatarNotaCobertura,
@@ -23,32 +23,6 @@ import {
   type PerguntaEtapa,
   type RespostaAvaliacao,
 } from '@/lib/funnel-phases'
-
-function extrairPerguntasConfig(
-  ppRaw: unknown,
-  roundType: string,
-): { casa: PerguntaEtapa[]; vaga: PerguntaEtapa[] } {
-  let casa: PerguntaEtapa[] = []
-  let vaga: PerguntaEtapa[] = []
-  if (!ppRaw || typeof ppRaw !== 'object') return { casa, vaga }
-  const obj = ppRaw as Record<string, unknown>
-  if (Array.isArray(obj[roundType])) {
-    casa = parsePerguntas(obj[roundType])
-  } else if (obj[roundType] && typeof obj[roundType] === 'object') {
-    const sub = obj[roundType] as Record<string, unknown>
-    if (Array.isArray(sub.casa)) casa = parsePerguntas(sub.casa)
-    if (Array.isArray(sub.vaga)) vaga = parsePerguntas(sub.vaga)
-    if (Array.isArray(sub.perguntas)) casa = parsePerguntas(sub.perguntas)
-  } else if (Array.isArray(obj.casa) || Array.isArray(obj.vaga)) {
-    if (Array.isArray(obj.casa)) casa = parsePerguntas(obj.casa)
-    if (Array.isArray(obj.vaga)) vaga = parsePerguntas(obj.vaga)
-  } else if (Array.isArray(obj)) {
-    casa = parsePerguntas(obj)
-  } else if (Array.isArray(obj.perguntas)) {
-    casa = parsePerguntas(obj.perguntas)
-  }
-  return { casa, vaga }
-}
 
 export default function AvaliacaoEntrevista() {
   const { id } = useParams<{ id: string }>()
@@ -72,6 +46,8 @@ export default function AvaliacaoEntrevista() {
   const [totalRodadas, setTotalRodadas] = useState(1)
   const [proximaRodada, setProximaRodada] = useState<{ n: number; nome: string } | null>(null)
   const [decidida, setDecidida] = useState(false)
+  const [transcricao, setTranscricao] = useState('')
+  const [transcricaoAberta, setTranscricaoAberta] = useState(false)
 
   useEffect(() => {
     async function loadData() {
@@ -102,6 +78,7 @@ export default function AvaliacaoEntrevista() {
       setTenantIdEnt(ent.tenant_id)
       setCandidatoStatus(cand?.status || '')
       setDecidida(!!ent.decisao)
+      setTranscricao(typeof ent.transcricao === 'string' ? ent.transcricao : '')
 
       const etapas = parseEtapas(vaga?.etapas)
       setTotalRodadas(etapas.length || 1)
@@ -120,17 +97,8 @@ export default function AvaliacaoEntrevista() {
         .eq('agent_type', 'copiloto')
         .maybeSingle()
 
-      const { casa, vaga: vagaQ } = extrairPerguntasConfig(config?.perguntas_padrao, roundType)
-
-      let vagaQuestions = vagaQ
-      if (vaga?.etapas && Array.isArray(vaga.etapas)) {
-        const etapaRaw = (vaga.etapas as Record<string, unknown>[]).find((e) => e?.n === rodada)
-        if (etapaRaw && Array.isArray(etapaRaw.perguntas)) {
-          vagaQuestions = parsePerguntas(etapaRaw.perguntas)
-        }
-      }
-
-      const resolved = resolverPerguntas(casa, vagaQuestions)
+      const casa = bancoCasaDoTipo(config?.perguntas_padrao, roundType)
+      const resolved = resolverPerguntas(casa, etapa?.perguntas ?? [], etapa?.silenciadas ?? [])
       setPerguntas(resolved)
 
       const existing = parseAvaliacao(ent.avaliacao)
@@ -293,6 +261,31 @@ export default function AvaliacaoEntrevista() {
             })}
         </CardContent>
       </Card>
+
+      {transcricao.trim().length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <FileText className="w-4 h-4 text-slate-600" />
+                Transcrição da entrevista
+              </CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => setTranscricaoAberta((v) => !v)}>
+                {transcricaoAberta ? 'esconder' : 'mostrar'}
+              </Button>
+            </div>
+          </CardHeader>
+          {transcricaoAberta && (
+            <CardContent>
+              <div className="max-h-[320px] overflow-y-auto rounded border border-slate-200 bg-slate-50 p-3">
+                <pre className="text-xs text-slate-700 whitespace-pre-wrap font-mono">
+                  {transcricao}
+                </pre>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

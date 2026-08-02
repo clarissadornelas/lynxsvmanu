@@ -12,7 +12,8 @@ interface StageQuestionsProps {
   numCandidatos: number
   onAddQuestion: (n: number, texto: string) => void
   onEditQuestion: (n: number, perguntaId: string, novoTexto: string, tipo: TipoPergunta) => void
-  onRemoveQuestion: (n: number, perguntaId: string) => void
+  onRemoveQuestion: (n: number, perguntaId: string, scope: 'casa' | 'vaga') => void
+  onRestoreQuestion: (n: number, perguntaId: string) => void
 }
 
 export function StageQuestions({
@@ -23,8 +24,11 @@ export function StageQuestions({
   onAddQuestion,
   onEditQuestion,
   onRemoveQuestion,
+  onRestoreQuestion,
 }: StageQuestionsProps) {
-  const perguntas = resolverPerguntas(bancoCasa, rodada.perguntas ?? [])
+  const silenciadas = rodada.silenciadas ?? []
+  const perguntas = resolverPerguntas(bancoCasa, rodada.perguntas ?? [], silenciadas)
+  const mudas = bancoCasa.filter((p) => silenciadas.includes(p.id))
 
   const handleAdd = () => {
     const texto = window.prompt('Nova pergunta desta vaga (fechada, nota 1 a 4):')
@@ -42,15 +46,17 @@ export function StageQuestions({
   }
 
   const handleRemove = (p: PerguntaEtapa) => {
-    onRemoveQuestion(rodada.n, p.id)
+    const scope = p.escopo === 'casa' ? 'casa' : 'vaga'
+    onRemoveQuestion(rodada.n, p.id, scope)
   }
 
   return (
     <div className="space-y-2">
       {numCandidatos > 0 && !somenteLeitura && (
         <p className="rounded bg-amber-50 px-2 py-1 text-xs text-amber-700">
-          Quem já foi entrevistado guarda no histórico as perguntas da época. Mudanças aqui valem
-          para os próximos candidatos.
+          {numCandidatos === 1
+            ? '1 candidato já passou por esta rodada e guardam no histórico as perguntas da época. Mudanças aqui valem para os próximos.'
+            : `${numCandidatos} candidatos já passaram por esta rodada e guardam no histórico as perguntas da época. Mudanças aqui valem para os próximos.`}
         </p>
       )}
 
@@ -89,19 +95,40 @@ export function StageQuestions({
                 >
                   editar
                 </button>
-                {p.escopo !== 'casa' && (
-                  <button
-                    onClick={() => handleRemove(p)}
-                    className="text-xs text-red-600 hover:text-red-700"
-                  >
-                    remover
-                  </button>
-                )}
+                <button
+                  onClick={() => handleRemove(p)}
+                  className="text-xs text-red-600 hover:text-red-700"
+                >
+                  {p.escopo === 'casa' ? 'não usar' : 'remover'}
+                </button>
               </div>
             )}
           </div>
         )
       })}
+
+      {mudas.length > 0 && (
+        <div className="space-y-1 rounded border border-slate-200 bg-slate-50 px-3 py-2">
+          <p className="text-xs font-medium text-slate-500">
+            {mudas.length === 1
+              ? '1 pergunta da casa desligada nesta vaga'
+              : `${mudas.length} perguntas da casa desligadas nesta vaga`}
+          </p>
+          {mudas.map((p) => (
+            <div key={p.id} className="flex items-center justify-between gap-2">
+              <p className="text-sm text-slate-400 line-through">{p.texto}</p>
+              {!somenteLeitura && (
+                <button
+                  onClick={() => onRestoreQuestion(rodada.n, p.id)}
+                  className="text-xs text-blue-600 hover:text-blue-700 shrink-0"
+                >
+                  usar de novo
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {!somenteLeitura && (
         <button

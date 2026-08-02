@@ -16,7 +16,7 @@ import {
   TIPOS_RODADA,
   tipoRodadaValido,
   resolverPerguntas,
-  parsePerguntas,
+  lerBancoCasa,
   type EtapaVaga,
   type PerguntaEtapa,
   type TipoPergunta,
@@ -31,29 +31,6 @@ interface EditorRodadasProps {
   candidatosPorRodada?: Record<number, number>
   vagaId?: string
   onSalvo?: () => void
-}
-
-function extrairBancoCasa(ppRaw: unknown): Record<string, PerguntaEtapa[]> {
-  const banco: Record<string, PerguntaEtapa[]> = {}
-  if (!ppRaw || typeof ppRaw !== 'object') return banco
-  const obj = ppRaw as Record<string, unknown>
-  for (const t of TIPOS_RODADA) {
-    const raw = obj[t.valor]
-    if (Array.isArray(raw)) {
-      banco[t.valor] = parsePerguntas(raw)
-    } else if (raw && typeof raw === 'object') {
-      const sub = raw as Record<string, unknown>
-      if (Array.isArray(sub.casa)) banco[t.valor] = parsePerguntas(sub.casa)
-      else if (Array.isArray(sub.perguntas)) banco[t.valor] = parsePerguntas(sub.perguntas)
-    }
-  }
-  const flat = Array.isArray(obj.casa)
-    ? parsePerguntas(obj.casa)
-    : Array.isArray(obj.perguntas)
-      ? parsePerguntas(obj.perguntas)
-      : null
-  if (flat) for (const t of TIPOS_RODADA) if (!banco[t.valor]) banco[t.valor] = flat
-  return banco
 }
 
 export default function EditorRodadas({
@@ -76,16 +53,21 @@ export default function EditorRodadas({
   }, [etapas])
 
   useEffect(() => {
-    if (!tenantId)
-      return supabase
-        .from('configuracoes_agente')
-        .select('perguntas_padrao')
-        .eq('tenant_id', tenantId)
-        .eq('agent_type', 'copiloto')
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data?.perguntas_padrao) setBancoCasa(extrairBancoCasa(data.perguntas_padrao))
-        })
+    if (!tenantId) return
+    let active = true
+    supabase
+      .from('configuracoes_agente')
+      .select('perguntas_padrao')
+      .eq('tenant_id', tenantId)
+      .eq('agent_type', 'copiloto')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!active) return
+        if (data?.perguntas_padrao) setBancoCasa(lerBancoCasa(data.perguntas_padrao))
+      })
+    return () => {
+      active = false
+    }
   }, [tenantId])
 
   const alterar = (n: number, campo: 'nome' | 'tipo' | 'duracao', valor: string) => {
@@ -171,13 +153,30 @@ export default function EditorRodadas({
     setSujo(true)
   }
 
-  const removerPergunta = (n: number, perguntaId: string) => {
+  const removerPergunta = (n: number, perguntaId: string, escopo: 'casa' | 'vaga' = 'vaga') => {
+    setRodadas((prev) =>
+      prev.map((r) => {
+        if (r.n !== n) return r
+        if (escopo === 'casa') {
+          const atual = r.silenciadas ?? []
+          return atual.includes(perguntaId) ? r : { ...r, silenciadas: [...atual, perguntaId] }
+        }
+        return {
+          ...r,
+          perguntas: (r.perguntas ?? []).filter((p) => p.id !== perguntaId),
+        }
+      }),
+    )
+    setSujo(true)
+  }
+
+  const restaurarPergunta = (n: number, perguntaId: string) => {
     setRodadas((prev) =>
       prev.map((r) => {
         if (r.n !== n) return r
         return {
           ...r,
-          perguntas: (r.perguntas ?? []).filter((p) => p.id !== perguntaId),
+          silenciadas: (r.silenciadas ?? []).filter((id) => id !== perguntaId),
         }
       }),
     )
@@ -224,6 +223,7 @@ export default function EditorRodadas({
         const perguntasResolvidas = resolverPerguntas(
           bancoCasa[rodada.tipo] ?? [],
           rodada.perguntas ?? [],
+          rodada.silenciadas ?? [],
         )
         const expandida = expandidas.has(rodada.n)
         const mostrarPerguntas = expandida || (perguntasResolvidas.length === 0 && !somenteLeitura)
@@ -315,6 +315,7 @@ export default function EditorRodadas({
                 onAddQuestion={acrescentarPergunta}
                 onEditQuestion={editarPergunta}
                 onRemoveQuestion={removerPergunta}
+                onRestoreQuestion={restaurarPergunta}
               />
             )}
 
