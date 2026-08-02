@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -21,6 +21,18 @@ import { RefinarBloco } from '@/components/entrevistas/RefinarBloco'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/use-auth'
 import {
+  parseEtapas,
+  resolverPerguntas,
+  bancoCasaDoTipo,
+  parseAvaliacao,
+  montarAvaliacaoVazia,
+  NOTAS_AVALIACAO,
+  notaECobertura,
+  formatarNotaCobertura,
+  type PerguntaEtapa,
+  type AvaliacaoEntrevista as Avaliacao,
+} from '@/lib/funnel-phases'
+import {
   Bot,
   Loader2,
   FileText,
@@ -31,6 +43,7 @@ import {
   PhoneOff,
   AlertTriangle,
   Copy,
+  Sparkles,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -48,6 +61,11 @@ export default function InterviewRoom() {
   const [notas, setNotas] = useState('')
   const [localStatus, setLocalStatus] = useState<'idle' | 'in_progress'>('idle')
   const [realizadaPor, setRealizadaPor] = useState<{ nome: string } | null>(null)
+  const [perguntas, setPerguntas] = useState<PerguntaEtapa[]>([])
+  const [rascunho, setRascunho] = useState<Avaliacao | null>(null)
+  const [rodadaNome, setRodadaNome] = useState('')
+  const [totalRodadas, setTotalRodadas] = useState(1)
+  const [salvandoRascunho, setSalvandoRascunho] = useState(false)
   const { user } = useAuth()
 
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -81,6 +99,34 @@ export default function InterviewRoom() {
         .maybeSingle()
       setVaga(v)
       setCandidato(c)
+
+      const etapas = parseEtapas(v?.etapas)
+      const rodada = ent.rodada || 1
+      setTotalRodadas(etapas.length || 1)
+      const etapa = etapas.find((e) => e.n === rodada) || null
+      setRodadaNome(etapa?.nome || `Rodada ${rodada}`)
+
+      const { data: config } = await supabase
+        .from('configuracoes_agente')
+        .select('perguntas_padrao')
+        .eq('tenant_id', ent.tenant_id)
+        .eq('agent_type', 'copiloto')
+        .maybeSingle()
+
+      const resolvidas = resolverPerguntas(
+        bancoCasaDoTipo(config?.perguntas_padrao, etapa?.tipo || 'rh'),
+        etapa?.perguntas ?? [],
+        etapa?.silenciadas ?? [],
+      )
+      setPerguntas(resolvidas)
+
+      const existingAvaliacao = parseAvaliacao(ent.avaliacao)
+      if (existingAvaliacao && existingAvaliacao.respostas.length > 0) {
+        setRascunho(existingAvaliacao)
+      } else {
+        setRascunho(montarAvaliacaoVazia(resolvidas))
+      }
+
       if (ent.realizada_por_id) {
         const { data: ru } = await supabase
           .from('usuarios')
@@ -230,6 +276,32 @@ export default function InterviewRoom() {
       }
       throw err
     }
+  }
+
+  const pontuar = async (perguntaId: string, valor: number) => {
+    if (!rascunho || !id) return
+    const atualizado: Avaliacao = {
+      ...rascunho,
+      respostas: rascunho.respostas.map((r) =>
+        r.pergunta_id === perguntaId
+          ? { ...r, nota: valor as 1 | 2 | 3 | 4, estado: 'avaliada' as const }
+          : r,
+      ),
+    }
+    setRascunho(atualizado)
+    setSalvandoRascunho(true)
+    try {
+      const { error } = await supabase
+        .from('entrevistas')
+        .update({ avaliacao: atualizado })
+        .eq('id', id)
+      if (error) {
+        toast.error('Não foi possível salvar o rascunho da avaliação.')
+      }
+    } catch {
+      toast.error('Erro ao salvar rascunho.')
+    }
+    setSalvandoRascunho(false)
   }
 
   const startCall = async () => {
@@ -481,9 +553,15 @@ export default function InterviewRoom() {
     /* intentionally ignored */
   }
 
+  const perguntasFechadas = perguntas.filter((p) => p.tipo === 'fechada')
+  const perguntasAbertas = perguntas.filter((p) => p.tipo === 'aberta')
+
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-12">
-      <PageHeader title="Sala de Entrevista" subtitle={`${candidato?.nome} • ${vaga?.titulo}`}>
+      <PageHeader
+        title="Sala de Entrevista"
+        subtitle={`${candidato?.nome} • ${vaga?.titulo} • Rodada ${entrevista.rodada || 1} de ${totalRodadas} • ${rodadaNome}`}
+      >
         <Badge className="bg-plum-suave text-primary">
           {entrevista.status.replace('_', ' ').toUpperCase()}
         </Badge>
@@ -554,12 +632,131 @@ export default function InterviewRoom() {
 
       {entrevista.status === 'roteiro_pronto' && localStatus === 'idle' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-7">
+          <div className="lg:col-span-7 space-y-4">
+            <Card>
+              <CardHeader className="bg-slate-50 border-b pb-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-indigo-600" /> Perguntas desta rodada
+                  </CardTitle>
+                  <Badge variant="secondary" className="text-sm font-medium">
+                    {formatarNotaCobertura(notaECobertura(rascunho))}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <CardDescription className="text-xs">
+                    Pontue enquanto conduz. Isto fica como rascunho e pode ser ajustado na analise.
+                  </CardDescription>
+                  <Link
+                    to={`/vagas/${entrevista.vaga_id}?tab=info`}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 underline shrink-0 ml-2"
+                  >
+                    ajustar perguntas da vaga
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                {perguntas.length === 0 ? (
+                  <p className="text-sm text-slate-500 text-center py-8">
+                    Nenhuma pergunta configurada para esta rodada.
+                  </p>
+                ) : (
+                  <>
+                    <div className="space-y-6">
+                      {perguntasFechadas.map((pergunta, idx) => {
+                        const resposta = rascunho?.respostas.find(
+                          (r) => r.pergunta_id === pergunta.id,
+                        )
+                        const origem =
+                          pergunta.escopo === 'casa'
+                            ? pergunta.editada
+                              ? 'editada'
+                              : 'herdada da casa'
+                            : 'desta vaga'
+                        return (
+                          <div key={pergunta.id || idx} className="space-y-3">
+                            <div className="flex items-start gap-3">
+                              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-medium mt-0.5">
+                                {idx + 1}
+                              </span>
+                              <div className="flex-1 space-y-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-sm font-medium text-slate-900">
+                                    {pergunta.texto}
+                                  </p>
+                                  <Badge
+                                    variant="outline"
+                                    className={
+                                      pergunta.tipo === 'fechada'
+                                        ? 'border-blue-200 bg-blue-50 text-blue-700 text-xs'
+                                        : 'border-amber-200 bg-amber-50 text-amber-700 text-xs'
+                                    }
+                                  >
+                                    {origem}
+                                  </Badge>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                  {NOTAS_AVALIACAO.map((opcao) => {
+                                    const isSelected = resposta?.nota === opcao.valor
+                                    return (
+                                      <button
+                                        key={opcao.valor}
+                                        type="button"
+                                        onClick={() => pontuar(pergunta.id, opcao.valor)}
+                                        className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                                          isSelected
+                                            ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                                        }`}
+                                      >
+                                        {opcao.rotulo}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {perguntasAbertas.length > 0 && (
+                      <div
+                        className={cn(
+                          'mt-6',
+                          perguntasFechadas.length > 0 && 'pt-6 border-t border-slate-100',
+                        )}
+                      >
+                        <h3 className="text-sm font-semibold text-slate-700 mb-3">
+                          Perguntas abertas · sem nota
+                        </h3>
+                        <ul className="space-y-2">
+                          {perguntasAbertas.map((pergunta, idx) => (
+                            <li
+                              key={pergunta.id || `aberta-${idx}`}
+                              className="text-sm text-slate-700 flex items-start gap-2"
+                            >
+                              <span className="text-slate-400 mt-0.5">•</span>
+                              <span>{pergunta.texto}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader className="bg-slate-50 border-b pb-4">
                 <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-indigo-600" /> Roteiro de Perguntas
+                  <Sparkles className="w-5 h-5 text-indigo-600" /> Sugestoes de aprofundamento
                 </CardTitle>
+                <CardDescription className="text-xs">
+                  Apoio da IA para conduzir. Nao entra na nota nem na cobertura.
+                </CardDescription>
                 {entrevista.roteiro && (
                   <RefinarBloco
                     shortcutChips={[
@@ -709,7 +906,12 @@ export default function InterviewRoom() {
 
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">Anotações</CardTitle>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base">Achados desta rodada</CardTitle>
+                  {salvandoRascunho && (
+                    <span className="text-[10px] font-normal text-slate-400">salvando...</span>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <Textarea
