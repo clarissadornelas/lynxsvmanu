@@ -202,12 +202,38 @@ export default function CandidateProfile() {
   }
 
   const latestDisc = interviews.find((i) => i.disc)?.disc
-  const analyzedEntrevista = interviews.find(
-    (i) => i.status === 'analisada' || i.status === 'entregue',
+  const rodadaCorrente =
+    typeof candidate.etapa_atual === 'number' && candidate.etapa_atual > 0
+      ? candidate.etapa_atual
+      : 1
+  const interviewsOrdenadas = [...interviews].sort((a, b) => (b.rodada ?? 1) - (a.rodada ?? 1))
+  const entrevistaDaRodada =
+    interviewsOrdenadas.find((i) => (i.rodada ?? 1) === rodadaCorrente) || null
+  const fallbacks = interviewsOrdenadas.reduce(
+    (acc, i) => {
+      if (!acc.analyzed && (i.status === 'analisada' || i.status === 'entregue')) {
+        acc.analyzed = i
+      }
+      if (
+        !acc.completed &&
+        (i.realizada_em || ['realizada', 'analisada', 'entregue'].includes(i.status))
+      ) {
+        acc.completed = i
+      }
+      return acc
+    },
+    { analyzed: null as any, completed: null as any },
   )
-  const completedEntrevista = interviews.find(
-    (i) => i.realizada_em || ['realizada', 'analisada', 'entregue'].includes(i.status),
-  )
+  const analyzedEntrevista =
+    entrevistaDaRodada && ['analisada', 'entregue'].includes(entrevistaDaRodada.status)
+      ? entrevistaDaRodada
+      : fallbacks.analyzed
+  const completedEntrevista =
+    entrevistaDaRodada &&
+    (entrevistaDaRodada.realizada_em ||
+      ['realizada', 'analisada', 'entregue'].includes(entrevistaDaRodada.status))
+      ? entrevistaDaRodada
+      : fallbacks.completed
   let analyzedReport: any = null
   try {
     analyzedReport = analyzedEntrevista?.resumo ? JSON.parse(analyzedEntrevista.resumo) : null
@@ -224,12 +250,21 @@ export default function CandidateProfile() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-8 animate-fade-in-up">
-      <PageHeader title={candidate.nome} subtitle={`Vaga: ${job?.titulo || 'Nenhuma'}`}>
+      <PageHeader
+        title={candidate.nome}
+        subtitle={`Registro do candidato • Vaga: ${job?.titulo || 'Nenhuma'}`}
+      >
         <Link to={job ? `/vagas/${job.id}` : '/candidatos'}>
           <Button variant="ghost" size="icon" className="bg-white border border-slate-200">
             <ChevronLeft className="w-4 h-4" />
           </Button>
         </Link>
+        <Button variant="outline" size="sm" asChild>
+          <Link to={`/dossie/${candidate.id}`}>
+            <FileText className="w-4 h-4 mr-2" />
+            Ver histórico completo
+          </Link>
+        </Button>
         <AddToBaseDialog
           candidatoId={candidate.id}
           nome={candidate.nome}

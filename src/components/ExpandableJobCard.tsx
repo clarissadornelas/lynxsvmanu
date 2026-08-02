@@ -157,7 +157,7 @@ export function ExpandableJobCard({ job, candidates, onJobClick }: Props) {
                             style={{ backgroundColor: COR_FASE[col.id] }}
                           />
                           <Link
-                            to={`/candidatos/${c.id}`}
+                            to={`/dossie/${c.id}`}
                             className="text-sm font-medium text-slate-700 hover:text-indigo-600 truncate"
                           >
                             {c.name || 'Sem nome'}
@@ -167,7 +167,7 @@ export function ExpandableJobCard({ job, candidates, onJobClick }: Props) {
                           <span className="text-xs font-bold text-slate-500">
                             {c.score.total.toFixed(1)}
                           </span>
-                          <Link to={`/candidatos/${c.id}`}>
+                          <Link to={`/dossie/${c.id}`}>
                             <Button size="sm" variant="ghost" className="h-7 text-xs gap-1">
                               Ver perfil
                             </Button>
@@ -204,7 +204,7 @@ export function ExpandableJobCard({ job, candidates, onJobClick }: Props) {
                         </AvatarFallback>
                       </Avatar>
                       <Link
-                        to={`/candidatos/${c.id}`}
+                        to={`/dossie/${c.id}`}
                         className="text-sm font-medium text-slate-600 truncate hover:text-indigo-600"
                       >
                         {c.name || 'Sem nome'}

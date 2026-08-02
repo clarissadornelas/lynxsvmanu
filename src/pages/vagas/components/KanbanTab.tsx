@@ -557,7 +557,7 @@ export default function KanbanTab({
                           <div className="min-w-0 flex-1">
                             <div className="flex justify-between items-start gap-2">
                               <Link
-                                to={`/candidatos/${c.id}`}
+                                to={`/dossie/${c.id}`}
                                 className="font-medium text-sm text-slate-900 truncate hover:text-indigo-600 hover:underline"
                               >
                                 {c.name}
@@ -648,7 +648,7 @@ export default function KanbanTab({
                         className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2"
                       >
                         <Link
-                          to={`/candidatos/${c.id}`}
+                          to={`/dossie/${c.id}`}
                           className="block text-sm font-medium text-slate-900 truncate hover:text-indigo-600 hover:underline"
                         >
                           {c.name}

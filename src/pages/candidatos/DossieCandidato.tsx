@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,7 +11,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
-import { Loader2, ChevronLeft, FileText, Bot } from 'lucide-react'
+import { Loader2, ChevronLeft, FileText, Bot, Video, ClipboardCheck } from 'lucide-react'
 import { getInitials } from '@/lib/avatar-utils'
 import {
   parseEtapas,
@@ -34,6 +34,14 @@ interface RoundData {
   status: 'avaliada' | 'parcial' | 'sem'
   executiveSummary: string | null
   discData: any | null
+  decisao: string | null
+}
+
+const ROTULO_DECISAO: Record<string, string> = {
+  avancou: 'avançou de rodada',
+  shortlist: 'foi para a shortlist',
+  nao_passou: 'não passou',
+  encerrada: 'encerrada sem avançar',
 }
 
 export default function DossieCandidato() {
@@ -130,6 +138,7 @@ export default function DossieCandidato() {
         status,
         executiveSummary,
         discData,
+        decisao: typeof ent.decisao === 'string' ? ent.decisao : null,
       }
     })
   }, [entrevistas, etapas])
@@ -294,9 +303,33 @@ export default function DossieCandidato() {
                       <span className="text-xs text-slate-400 shrink-0">
                         {rd.cobertura.respondidas}/{rd.cobertura.fechadas}
                       </span>
+                      {rd.decisao && (
+                        <Badge variant="outline" className="text-xs shrink-0 bg-slate-50">
+                          {ROTULO_DECISAO[rd.decisao] ?? rd.decisao}
+                        </Badge>
+                      )}
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-4">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to={`/entrevistas/${rd.ent.id}`}>
+                          <Video className="w-4 h-4 mr-1" />
+                          Abrir a sala desta rodada
+                        </Link>
+                      </Button>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to={`/avaliar/${rd.ent.id}`}>
+                          <ClipboardCheck className="w-4 h-4 mr-1" />
+                          {rd.ent.avaliada_em ? 'Rever a análise' : 'Analisar e decidir rodada'}
+                        </Link>
+                      </Button>
+                      {!rd.decisao && rd.ent.avaliada_em && (
+                        <span className="text-xs text-orange-600 font-medium">
+                          decisão pendente
+                        </span>
+                      )}
+                    </div>
                     {rd.avaliacao && rd.avaliacao.respostas.length > 0 ? (
                       <div className="space-y-3">
                         {rd.avaliacao.respostas.map((resp, rIdx) => (
