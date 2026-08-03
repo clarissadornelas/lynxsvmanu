@@ -11,7 +11,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion'
-import { Loader2, ChevronLeft, FileText, Bot, Video, ClipboardCheck } from 'lucide-react'
+import { Loader2, ChevronLeft, FileText, Bot, Video, ClipboardCheck, User } from 'lucide-react'
 import { getInitials } from '@/lib/avatar-utils'
 import {
   parseEtapas,
@@ -36,6 +36,7 @@ interface RoundData {
   executiveSummary: string | null
   discData: any | null
   decisao: string | null
+  notas: string | null
 }
 
 const ROTULO_DECISAO: Record<string, string> = {
@@ -140,6 +141,7 @@ export default function DossieCandidato() {
         executiveSummary,
         discData,
         decisao: typeof ent.decisao === 'string' ? ent.decisao : null,
+        notas: typeof ent.notas === 'string' && ent.notas.trim().length > 0 ? ent.notas : null,
       }
     })
   }, [entrevistas, etapas])
@@ -238,14 +240,22 @@ export default function DossieCandidato() {
             </div>
           </div>
         </div>
-        {candidate.cv_url && (
+        <div className="flex items-center gap-2 shrink-0">
           <Button variant="outline" size="sm" asChild>
-            <a href={candidate.cv_url} target="_blank" rel="noopener noreferrer">
-              <FileText className="w-4 h-4 mr-1" />
-              Abrir CV
-            </a>
+            <Link to={`/candidatos/${candidate.id}`}>
+              <User className="w-4 h-4 mr-1" />
+              Ver registro do candidato
+            </Link>
           </Button>
-        )}
+          {candidate.cv_url && (
+            <Button variant="outline" size="sm" asChild>
+              <a href={candidate.cv_url} target="_blank" rel="noopener noreferrer">
+                <FileText className="w-4 h-4 mr-1" />
+                Abrir CV
+              </a>
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>
@@ -326,6 +336,14 @@ export default function DossieCandidato() {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="space-y-4">
+                    {rd.notas && (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                        <p className="text-xs font-medium uppercase tracking-wide text-amber-700 mb-1">
+                          Registro desta rodada
+                        </p>
+                        <p className="text-sm text-amber-900 whitespace-pre-wrap">{rd.notas}</p>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 flex-wrap">
                       <Button variant="outline" size="sm" asChild>
                         <Link to={`/entrevistas/${rd.ent.id}`}>

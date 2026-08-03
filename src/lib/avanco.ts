@@ -17,6 +17,7 @@ export interface AvancarRodadaParams {
   entrevistaId: string | null
   rodadaAtual: number
   proximaRodada: number
+  totalEtapas?: number
   semParecer?: boolean
   ator?: string
 }
@@ -74,9 +75,12 @@ export async function avancarRodada(params: AvancarRodadaParams): Promise<Result
     entrevistaId,
     rodadaAtual,
     proximaRodada,
+    totalEtapas,
     semParecer = false,
     ator = 'avaliacao',
   } = params
+
+  const encerrouFunil = typeof totalEtapas === 'number' && proximaRodada > totalEtapas
 
   const { error: candErr } = await supabase
     .from('candidatos')
@@ -109,7 +113,10 @@ export async function avancarRodada(params: AvancarRodadaParams): Promise<Result
     .maybeSingle()
 
   let entrevistaCriadaErro: string | undefined
-  if (!jaExiste) {
+  // proximaRodada beyond totalEtapas is a control number (totalEtapas + 1), not a real stage.
+  // It moves the candidate to "Entrevistados" via deriveKanbanColumn — there is no interview
+  // to create. Creating one would generate a ghost record in the dossier.
+  if (!jaExiste && !encerrouFunil) {
     const { error: novaErr } = await supabase.from('entrevistas').insert({
       tenant_id: tenantId,
       vaga_id: vagaId,

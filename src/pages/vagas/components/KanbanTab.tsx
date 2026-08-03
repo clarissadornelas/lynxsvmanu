@@ -318,6 +318,7 @@ export default function KanbanTab({
         entrevistaId,
         rodadaAtual,
         proximaRodada: destinoRodada,
+        totalEtapas: totalRodadas,
         semParecer: true,
         ator,
       })
