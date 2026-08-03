@@ -3,7 +3,7 @@ import useRecruitmentStore from '@/stores/useRecruitmentStore'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import EditorRodadas from '@/components/vaga/EditorRodadas'
 import { parseEtapas, deriveKanbanColumn } from '@/lib/funnel-phases'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -28,9 +28,19 @@ import KanbanTab from './components/KanbanTab'
 
 export default function JobDetails() {
   const { id } = useParams<{ id: string }>()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { jobs, candidates, reload } = useRecruitmentStore()
-  const initialTab = searchParams.get('tab') === 'decisao' ? 'decisao' : 'kanban'
+  const ABAS_VALIDAS = ['kanban', 'decisao', 'info'] as const
+  const resolverAba = (valor: string | null) =>
+    ABAS_VALIDAS.includes(valor as (typeof ABAS_VALIDAS)[number]) ? valor! : 'kanban'
+  const [abaAtiva, setAbaAtiva] = useState(resolverAba(searchParams.get('tab')))
+  useEffect(() => {
+    setAbaAtiva(resolverAba(searchParams.get('tab')))
+  }, [searchParams])
+  const trocarAba = (valor: string) => {
+    setAbaAtiva(valor)
+    setSearchParams({ tab: valor }, { replace: true })
+  }
 
   const { updateJob, loading: salvandoVaga } = useJobOperations()
   const job = jobs.find((j) => j.id === id)
@@ -108,7 +118,11 @@ export default function JobDetails() {
         </Link>
       </PageHeader>
 
-      <Tabs defaultValue={initialTab} className="flex-1 flex flex-col overflow-hidden">
+      <Tabs
+        value={abaAtiva}
+        onValueChange={trocarAba}
+        className="flex-1 flex flex-col overflow-hidden"
+      >
         <TabsList className="bg-slate-200/50 p-1 w-full sm:w-auto inline-flex justify-start sm:inline-flex shrink-0">
           <TabsTrigger
             value="kanban"
