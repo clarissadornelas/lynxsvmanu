@@ -86,15 +86,14 @@ export function ExpandableJobCard({ job, candidates, onJobClick }: Props) {
               size="sm"
               variant="ghost"
               className="h-7 gap-1 text-xs text-slate-500"
-              onClick={(e) => {
-                e.stopPropagation()
+              onClick={() => {
                 onJobClick?.(job.id)
               }}
             >
               <Settings className="w-3.5 h-3.5" />
               Configurar
             </Button>
-            <Link to={`/vagas/${job.id}`} onClick={(e) => e.stopPropagation()}>
+            <Link to={`/vagas/${job.id}`}>
               <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs text-slate-500">
                 Detalhes <ArrowRight className="w-3.5 h-3.5" />
               </Button>
@@ -106,14 +105,16 @@ export function ExpandableJobCard({ job, candidates, onJobClick }: Props) {
             const count = colunaCounts[col.id] || 0
             if (count === 0) return null
             return (
-              <div
+              <Link
                 key={col.id}
-                className="h-full transition-all"
+                to={`/vagas/${job.id}?tab=kanban&coluna=${col.id}`}
+                className="h-full transition-all hover:brightness-110"
                 style={{
                   width: `${(count / total) * 100}%`,
                   backgroundColor: COR_FASE[col.id],
                 }}
-                title={`${col.label}: ${count}`}
+                title={`${col.label}: ${count} · abrir no Kanban`}
+                onClick={(e) => e.stopPropagation()}
               />
             )
           })}

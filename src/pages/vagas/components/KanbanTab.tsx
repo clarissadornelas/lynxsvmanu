@@ -9,13 +9,6 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase/client'
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/sheet'
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -25,7 +18,6 @@ import {
 } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { JobAvailabilitySection } from '@/components/job-availability/JobAvailabilitySection'
 import { getAvailabilityStatus } from '@/lib/job-availability-status'
 import { getBusySlots } from '@/lib/agenda/getBusySlots'
 import { generateWeekSlots, type GeneratedSlot } from '@/lib/agenda/slot-generator'
@@ -463,14 +455,11 @@ export default function KanbanTab({
             )
           })}
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 text-xs gap-1"
-          onClick={() => setAvailabilityOpen(true)}
-        >
-          <Settings2 className="w-3.5 h-3.5" />
-          Configurar disponibilidade
+        <Button size="sm" variant="outline" className="h-8 text-xs gap-1" asChild>
+          <Link to={`/vagas/${jobId}?tab=info`}>
+            <Settings2 className="w-3.5 h-3.5" />
+            Configurar disponibilidade
+          </Link>
         </Button>
         <Button size="sm" variant="outline" className="h-8 text-xs gap-1" asChild>
           <Link to={`/agenda?vaga=${jobId}`}>
@@ -679,28 +668,6 @@ export default function KanbanTab({
         }
         onConfirmar={confirmarSaida}
       />
-
-      <Sheet open={availabilityOpen} onOpenChange={setAvailabilityOpen}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Disponibilidade da Vaga</SheetTitle>
-            <SheetDescription className="sr-only">
-              Configurar janelas de horário e disponibilidade
-            </SheetDescription>
-          </SheetHeader>
-          <div className="px-4 pb-6 pt-4">
-            {jobMaxAgendamentos !== undefined && (
-              <JobAvailabilitySection
-                jobId={jobId}
-                initialJanela={localJanela}
-                initialMaxAgendamentos={localMaxAgendamentos}
-                initialDataLimite={localDataLimite}
-                onSaved={handleAvailabilitySaved}
-              />
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
 
       <Dialog
         open={!!schedulingCandidate}

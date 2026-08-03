@@ -19,16 +19,13 @@ import {
   Pause,
   Play,
   Archive,
-  UserPlus,
   RotateCcw,
   Settings2,
 } from 'lucide-react'
 import useRecruitmentStore from '@/stores/useRecruitmentStore'
 import { JobFunnelSummary } from '@/components/JobFunnelSummary'
 import { useJobOperations } from '@/hooks/use-job-operations'
-import { CvIngest } from '@/components/CvIngest'
 import { toast } from 'sonner'
-import { Separator } from '@/components/ui/separator'
 import { DangerZone } from '@/components/DangerZone'
 import { Link } from 'react-router-dom'
 import { parseEtapas } from '@/lib/funnel-phases'
@@ -309,27 +306,6 @@ export function JobProfileSheet({ jobId, open, onOpenChange }: Props) {
               da vaga.
             </p>
           </div>
-
-          {job.id && job.tenantId && (
-            <>
-              <Separator />
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <UserPlus className="w-4 h-4 text-slate-500" />
-                  <h4 className="text-sm font-semibold text-slate-700">
-                    Adicionar candidatos via CV
-                  </h4>
-                </div>
-                <CvIngest
-                  vagaId={job.id}
-                  tenantId={job.tenantId}
-                  onDone={() => {
-                    reload()
-                  }}
-                />
-              </div>
-            </>
-          )}
         </div>
 
         <SheetFooter className="flex-row gap-2 border-t pt-4">

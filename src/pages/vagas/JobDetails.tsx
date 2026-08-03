@@ -7,6 +7,8 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -36,8 +38,15 @@ export default function JobDetails() {
 
   const [form, setForm] = useState({
     titulo: '',
+    empresa: '',
+    cargo: '',
+    descricao: '',
     data_limite: '',
     status: 'aberta',
+    salario_min: '',
+    salario_max: '',
+    salario_moeda: 'BRL',
+    salario_nao_declarado: false,
   })
   const [formIniciado, setFormIniciado] = useState(false)
 
@@ -48,17 +57,31 @@ export default function JobDetails() {
   if (!formIniciado) {
     setForm({
       titulo: job.title || '',
+      empresa: job.company || '',
+      cargo: (job as unknown as { cargo?: string }).cargo || '',
+      descricao: job.description || '',
       data_limite: job.dataLimite ? job.dataLimite.slice(0, 10) : '',
       status: job.status || 'aberta',
+      salario_min: job.salarioMin != null ? String(job.salarioMin) : '',
+      salario_max: job.salarioMax != null ? String(job.salarioMax) : '',
+      salario_moeda: (job as unknown as { salarioMoeda?: string }).salarioMoeda || 'BRL',
+      salario_nao_declarado: job.salarioMin == null && job.salarioMax == null,
     })
     setFormIniciado(true)
   }
 
   const salvarDadosDaVaga = async () => {
+    const nd = form.salario_nao_declarado
     const { error } = await updateJob(job.id, {
       titulo: form.titulo,
+      empresa: form.empresa,
+      cargo: form.cargo,
+      descricao: form.descricao,
       data_limite: form.data_limite || null,
       status: form.status,
+      salario_min: nd || !form.salario_min ? null : Number(form.salario_min),
+      salario_max: nd || !form.salario_max ? null : Number(form.salario_max),
+      salario_moeda: nd ? null : form.salario_moeda,
     })
     if (error) {
       toast.error('Não foi possível salvar os dados da vaga.')
@@ -138,6 +161,31 @@ export default function JobDetails() {
                 />
               </div>
               <div className="space-y-1.5">
+                <Label htmlFor="vaga-empresa">Empresa</Label>
+                <Input
+                  id="vaga-empresa"
+                  value={form.empresa}
+                  onChange={(e) => setForm({ ...form, empresa: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="vaga-cargo">Cargo</Label>
+                <Input
+                  id="vaga-cargo"
+                  value={form.cargo}
+                  onChange={(e) => setForm({ ...form, cargo: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-3">
+                <Label htmlFor="vaga-descricao">Descrição</Label>
+                <Textarea
+                  id="vaga-descricao"
+                  value={form.descricao}
+                  onChange={(e) => setForm({ ...form, descricao: e.target.value })}
+                  rows={4}
+                />
+              </div>
+              <div className="space-y-1.5">
                 <Label htmlFor="vaga-prazo">Prazo</Label>
                 <Input
                   id="vaga-prazo"
@@ -161,6 +209,65 @@ export default function JobDetails() {
                 </Select>
               </div>
             </div>
+
+            <div className="mb-6">
+              <h4 className="font-medium text-sm text-slate-700 mb-3">Faixa salarial</h4>
+              <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+                <div className="flex items-center gap-2 order-last sm:order-first">
+                  <Checkbox
+                    id="vaga-salario-nd"
+                    checked={form.salario_nao_declarado}
+                    onCheckedChange={(checked) =>
+                      setForm({ ...form, salario_nao_declarado: checked === true })
+                    }
+                  />
+                  <Label
+                    htmlFor="vaga-salario-nd"
+                    className="text-sm text-slate-600 cursor-pointer"
+                  >
+                    Não declarada
+                  </Label>
+                </div>
+                <div className="space-y-1.5 flex-1">
+                  <Label htmlFor="vaga-salario-min">Mínimo</Label>
+                  <Input
+                    id="vaga-salario-min"
+                    type="number"
+                    value={form.salario_min}
+                    disabled={form.salario_nao_declarado}
+                    onChange={(e) => setForm({ ...form, salario_min: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5 flex-1">
+                  <Label htmlFor="vaga-salario-max">Máximo</Label>
+                  <Input
+                    id="vaga-salario-max"
+                    type="number"
+                    value={form.salario_max}
+                    disabled={form.salario_nao_declarado}
+                    onChange={(e) => setForm({ ...form, salario_max: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5 w-full sm:w-32">
+                  <Label htmlFor="vaga-salario-moeda">Moeda</Label>
+                  <Select
+                    value={form.salario_moeda}
+                    disabled={form.salario_nao_declarado}
+                    onValueChange={(v) => setForm({ ...form, salario_moeda: v })}
+                  >
+                    <SelectTrigger id="vaga-salario-moeda">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="BRL">BRL (R$)</SelectItem>
+                      <SelectItem value="USD">USD ($)</SelectItem>
+                      <SelectItem value="EUR">EUR (€)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
             <div className="flex justify-end mb-6">
               <Button onClick={salvarDadosDaVaga} disabled={salvandoVaga} size="sm">
                 {salvandoVaga ? (

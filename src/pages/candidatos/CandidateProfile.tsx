@@ -458,20 +458,6 @@ export default function CandidateProfile() {
               <CardTitle className="text-sm">Ações</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button
-                className="w-full justify-start bg-[#25D366] hover:bg-[#128C7E] text-white"
-                variant="default"
-              >
-                <MessageCircle className="w-4 h-4 mr-2" />
-                WhatsApp Manual
-              </Button>
-              <Button
-                className="w-full justify-start text-blue-600 bg-blue-50 hover:bg-blue-100"
-                variant="secondary"
-              >
-                <CalendarIcon className="w-4 h-4 mr-2" />
-                Forçar Agendamento
-              </Button>
               <Link
                 to={`/entrevistas/nova?candidato=${candidate.id}&vaga=${candidate.vaga_id || ''}`}
               >
