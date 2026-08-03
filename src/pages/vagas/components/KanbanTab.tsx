@@ -239,6 +239,11 @@ export default function KanbanTab({
     : null
 
   const proximaEtapaPular = pularCandidato ? proximaEtapaDe(pularCandidato) : null
+  const encerraFunilPular = pularCandidato !== null && proximaEtapaPular === null
+  const destinoRodada = encerraFunilPular ? totalRodadas + 1 : (proximaEtapaPular?.n ?? 0)
+  const destinoPular = encerraFunilPular
+    ? 'Entrevistados'
+    : (proximaEtapaPular?.nome ?? 'próxima rodada')
 
   const confirmarPular = async () => {
     const candidato = pularCandidato
@@ -249,18 +254,18 @@ export default function KanbanTab({
       return
     }
 
-    const proxima = proximaEtapaDe(candidato)
-    if (!proxima) {
-      toast.error('Não há próxima rodada configurada nesta vaga.')
-      return
-    }
-
     setPularLoading(true)
     try {
       const rodadaAtual =
         typeof candidato.etapaAtual === 'number' && candidato.etapaAtual > 0
           ? candidato.etapaAtual
           : 1
+
+      const ator = encerraFunilPular ? 'kanban_encerrou_sem_entrevista' : 'kanban_sem_entrevista'
+      const notasBase =
+        ator === 'kanban_encerrou_sem_entrevista'
+          ? `Rodada ${rodadaAtual} encerrada sem entrevista. Candidato foi direto para Entrevistados. Motivo: ${pularMotivo.trim()}`
+          : `Rodada ${rodadaAtual} passada sem entrevista. Motivo: ${pularMotivo.trim()}`
 
       const { data: entrevistaExistente } = await supabase
         .from('entrevistas')
@@ -277,7 +282,7 @@ export default function KanbanTab({
         const { error: updErr } = await supabase
           .from('entrevistas')
           .update({
-            notas: `Passou sem entrevista. Motivo: ${pularMotivo.trim()}`,
+            notas: notasBase,
             avaliada_em: new Date().toISOString(),
           })
           .eq('id', entrevistaId)
@@ -294,7 +299,7 @@ export default function KanbanTab({
             candidato_id: candidato.id,
             rodada: rodadaAtual,
             status: 'aguardando',
-            notas: `Passou sem entrevista. Motivo: ${pularMotivo.trim()}`,
+            notas: notasBase,
             avaliada_em: new Date().toISOString(),
           })
           .select('id')
@@ -312,9 +317,9 @@ export default function KanbanTab({
         tenantId: candidato.tenantId,
         entrevistaId,
         rodadaAtual,
-        proximaRodada: proxima.n,
+        proximaRodada: destinoRodada,
         semParecer: true,
-        ator: 'kanban_sem_entrevista',
+        ator,
       })
 
       if (!resultado.success) {
@@ -323,7 +328,9 @@ export default function KanbanTab({
       }
 
       toast.success(
-        `${candidato.name} passou para ${proxima.nome} sem entrevista. A rodada fica sem cobertura.`,
+        ator === 'kanban_encerrou_sem_entrevista'
+          ? `${candidato.name} encerrou as entrevistas e foi para Entrevistados. A rodada ${rodadaAtual} fica sem cobertura.`
+          : `${candidato.name} passou para ${destinoPular} sem entrevista. A rodada fica sem cobertura.`,
       )
       setPularCandidatoId(null)
       setPularMotivo('')
@@ -717,24 +724,20 @@ export default function KanbanTab({
                             </button>
                           )}
                         </div>
-                        {col.id === 'em_entrevista' &&
-                          c.situacao !== 'eliminado' &&
-                          proximaEtapaDe(c) && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                if (!proximaEtapaDe(c)) {
-                                  toast.error('Não há próxima rodada configurada nesta vaga.')
-                                  return
-                                }
-                                setPularCandidatoId(c.id)
-                                setPularMotivo('')
-                              }}
-                              className="mt-1.5 text-xs text-amber-600 hover:text-amber-700 font-medium transition-colors"
-                            >
-                              Passar sem entrevista
-                            </button>
-                          )}
+                        {col.id === 'em_entrevista' && c.situacao !== 'eliminado' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setPularCandidatoId(c.id)
+                              setPularMotivo('')
+                            }}
+                            className="mt-1.5 text-xs text-amber-600 hover:text-amber-700 font-medium transition-colors"
+                          >
+                            {proximaEtapaDe(c)
+                              ? 'Passar sem entrevista'
+                              : 'Encerrar sem entrevista'}
+                          </button>
+                        )}
                         {rodadaPendente[c.id] && (
                           <Link
                             to={`/avaliar/${rodadaPendente[c.id].entrevistaId}`}
@@ -893,17 +896,34 @@ export default function KanbanTab({
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Passar sem entrevista</DialogTitle>
+            <DialogTitle>
+              {destinoPular === 'Entrevistados'
+                ? 'Encerrar sem entrevista'
+                : 'Passar sem entrevista'}
+            </DialogTitle>
             <DialogDescription>
-              {pularCandidato?.name} · {proximaEtapaPular?.nome ?? 'próxima rodada'}
+              {pularCandidato?.name} ·{' '}
+              {destinoPular === 'Entrevistados' ? 'vai para Entrevistados' : destinoPular}
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-2 space-y-3">
-            <p className="text-sm text-amber-600 bg-amber-50 rounded-md p-3">
-              Passar sem entrevista significa que a rodada atual não terá cobertura de avaliação. O
-              candidato avança direto para a próxima etapa.
-            </p>
+            {destinoPular === 'Entrevistados' ? (
+              <div className="text-sm text-amber-600 bg-amber-50 rounded-md p-3 space-y-1">
+                <p>
+                  Encerrar sem entrevista significa que o candidato finaliza as entrevistas e vai
+                  para Entrevistados, aguardando a escolha dos finalistas.
+                </p>
+                <p className="text-xs">
+                  O histórico registra em qual rodada o candidato saiu e o motivo informado.
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-amber-600 bg-amber-50 rounded-md p-3">
+                Passar sem entrevista significa que a rodada atual não terá cobertura de avaliação.
+                O candidato avança direto para a próxima etapa.
+              </p>
+            )}
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">Motivo</label>
               <Textarea
