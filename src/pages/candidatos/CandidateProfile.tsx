@@ -40,7 +40,14 @@ interface CandidatoEvento {
   de: string | null
   para: string | null
   agente: string | null
+  ator: string | null
   criado_em: string
+}
+
+const COMO_ACONTECEU: Record<string, string> = {
+  avaliacao: 'Após a avaliação da entrevista',
+  kanban_sem_entrevista: 'Passou sem entrevista',
+  kanban_encerrou_sem_entrevista: 'Encerrou as entrevistas sem entrevistar',
 }
 
 export default function CandidateProfile() {
@@ -168,7 +175,7 @@ export default function CandidateProfile() {
           supabase.from('conversas').select('id').eq('candidato_id', id),
           supabase
             .from('candidato_eventos')
-            .select('id, tipo, de, para, agente, criado_em')
+            .select('id, tipo, de, para, agente, ator, criado_em')
             .eq('candidato_id', id)
             .order('criado_em', { ascending: false }),
         ])
@@ -398,61 +405,6 @@ export default function CandidateProfile() {
             </Card>
           )}
 
-          {completedEntrevista && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  Entrevista Realizada
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                {completedEntrevista.realizada_em && (
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Clock className="w-4 h-4 shrink-0" />
-                    <span>
-                      {new Date(completedEntrevista.realizada_em).toLocaleString('pt-BR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </span>
-                  </div>
-                )}
-                {ultimaEntrevistaMeta?.realizada_por_nome && (
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <User className="w-4 h-4 shrink-0" />
-                    <span>{ultimaEntrevistaMeta.realizada_por_nome}</span>
-                  </div>
-                )}
-                {ultimaEntrevistaMeta?.transcricao_preview && (
-                  <div className="bg-slate-50 p-3 rounded-lg text-xs text-slate-600 line-clamp-3">
-                    {ultimaEntrevistaMeta.transcricao_preview}
-                  </div>
-                )}
-                {analyzedEntrevista && analyzedReport && (
-                  <>
-                    <div className="border-t border-slate-100 my-2" />
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Score pós-entrevista</span>
-                      <Badge variant="outline" className="font-bold">
-                        {candidate.score ? `${candidate.score}%` : 'N/A'}
-                      </Badge>
-                    </div>
-                    {analyzedReport.recommendation && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-500">Recomendação IA</span>
-                        <Badge variant="secondary">{analyzedReport.recommendation}</Badge>
-                      </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Ações</CardTitle>
@@ -586,10 +538,17 @@ export default function CandidateProfile() {
                         </div>
                         {(evento.de || evento.para) && (
                           <p className="text-sm text-slate-600 mt-1">
-                            {rotuloStatus(evento.de)} para {rotuloStatus(evento.para)}
+                            {evento.tipo === 'rodada_criada'
+                              ? `Rodada ${evento.de} para ${evento.para}`
+                              : `${rotuloStatus(evento.de)} para ${rotuloStatus(evento.para)}`}
                           </p>
-                        )}{' '}
-                        {evento.agente && (
+                        )}
+                        {COMO_ACONTECEU[evento.ator ?? ''] && (
+                          <p className="text-xs text-slate-500 mt-1">
+                            {COMO_ACONTECEU[evento.ator ?? '']}
+                          </p>
+                        )}
+                        {evento.agente && !COMO_ACONTECEU[evento.ator ?? ''] && (
                           <p className="text-xs text-slate-400 mt-1">({evento.agente})</p>
                         )}
                       </div>
