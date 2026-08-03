@@ -34,12 +34,15 @@ import {
   classesRodada,
   rotuloMotivoSaida,
   type KanbanColumnId,
+  type EtapaVaga,
 } from '@/lib/funnel-phases'
 import useRecruitmentStore, { Candidate, CandidateStatus } from '@/stores/useRecruitmentStore'
 import type { Json } from '@/lib/supabase/types'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import { getInitials } from '@/lib/avatar-utils'
 import SaidaProcessoModal, { type MotivoSaida } from '@/components/kanban/SaidaProcessoModal'
+import { Textarea } from '@/components/ui/textarea'
+import { avancarRodada } from '@/lib/avanco'
 
 const COLUMNS = KANBAN_COLUMNS.map((c) => ({
   id: c.id,
@@ -78,6 +81,9 @@ export default function KanbanTab({
   const [saidasAbertas, setSaidasAbertas] = useState<Record<string, boolean>>({})
   const [ultimoEvento, setUltimoEvento] = useState<Record<string, string>>({})
   const [rodadaPendente, setRodadaPendente] = useState<Record<string, { entrevistaId: string }>>({})
+  const [pularCandidatoId, setPularCandidatoId] = useState<string | null>(null)
+  const [pularMotivo, setPularMotivo] = useState('')
+  const [pularLoading, setPularLoading] = useState(false)
 
   useEffect(() => {
     const ids = candidates.map((c) => c.id)
@@ -222,6 +228,113 @@ export default function KanbanTab({
   }
 
   const etapasDaVaga = parseEtapas(currentJob?.etapas)
+
+  const proximaEtapaDe = (c: Candidate): EtapaVaga | null => {
+    const rodadaAtual = typeof c.etapaAtual === 'number' && c.etapaAtual > 0 ? c.etapaAtual : 1
+    return etapasDaVaga.find((e) => e.n === rodadaAtual + 1) ?? null
+  }
+
+  const pularCandidato = pularCandidatoId
+    ? (candidates.find((c) => c.id === pularCandidatoId) ?? null)
+    : null
+
+  const proximaEtapaPular = pularCandidato ? proximaEtapaDe(pularCandidato) : null
+
+  const confirmarPular = async () => {
+    const candidato = pularCandidato
+    if (!candidato) return
+
+    if (pularMotivo.trim().length < 3) {
+      toast.error('Informe um motivo com pelo menos 3 caracteres.')
+      return
+    }
+
+    const proxima = proximaEtapaDe(candidato)
+    if (!proxima) {
+      toast.error('Não há próxima rodada configurada nesta vaga.')
+      return
+    }
+
+    setPularLoading(true)
+    try {
+      const rodadaAtual =
+        typeof candidato.etapaAtual === 'number' && candidato.etapaAtual > 0
+          ? candidato.etapaAtual
+          : 1
+
+      const { data: entrevistaExistente } = await supabase
+        .from('entrevistas')
+        .select('id')
+        .eq('candidato_id', candidato.id)
+        .eq('vaga_id', jobId)
+        .eq('rodada', rodadaAtual)
+        .maybeSingle()
+
+      let entrevistaId: string | null = null
+
+      if (entrevistaExistente) {
+        entrevistaId = entrevistaExistente.id
+        const { error: updErr } = await supabase
+          .from('entrevistas')
+          .update({
+            notas: `Passou sem entrevista. Motivo: ${pularMotivo.trim()}`,
+            avaliada_em: new Date().toISOString(),
+          })
+          .eq('id', entrevistaId)
+        if (updErr) {
+          toast.error('Não foi possível registrar a rodada pulada.')
+          return
+        }
+      } else {
+        const { data: novaEnt, error: novaErr } = await supabase
+          .from('entrevistas')
+          .insert({
+            tenant_id: candidato.tenantId,
+            vaga_id: jobId,
+            candidato_id: candidato.id,
+            rodada: rodadaAtual,
+            status: 'aguardando',
+            notas: `Passou sem entrevista. Motivo: ${pularMotivo.trim()}`,
+            avaliada_em: new Date().toISOString(),
+          })
+          .select('id')
+          .single()
+        if (novaErr || !novaEnt) {
+          toast.error('Não foi possível registrar a rodada pulada.')
+          return
+        }
+        entrevistaId = novaEnt.id
+      }
+
+      const resultado = await avancarRodada({
+        candidatoId: candidato.id,
+        vagaId: jobId,
+        tenantId: candidato.tenantId,
+        entrevistaId,
+        rodadaAtual,
+        proximaRodada: proxima.n,
+        semParecer: true,
+        ator: 'kanban_sem_entrevista',
+      })
+
+      if (!resultado.success) {
+        toast.error('Não foi possível registrar a rodada pulada.')
+        return
+      }
+
+      toast.success(
+        `${candidato.name} passou para ${proxima.nome} sem entrevista. A rodada fica sem cobertura.`,
+      )
+      setPularCandidatoId(null)
+      setPularMotivo('')
+      await reload()
+    } catch (err) {
+      console.error(err)
+      toast.error('Não foi possível registrar a rodada pulada.')
+    } finally {
+      setPularLoading(false)
+    }
+  }
 
   const diasAlerta =
     typeof currentJob?.dias_alerta === 'number' && currentJob.dias_alerta > 0
@@ -604,6 +717,24 @@ export default function KanbanTab({
                             </button>
                           )}
                         </div>
+                        {col.id === 'em_entrevista' &&
+                          c.situacao !== 'eliminado' &&
+                          proximaEtapaDe(c) && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (!proximaEtapaDe(c)) {
+                                  toast.error('Não há próxima rodada configurada nesta vaga.')
+                                  return
+                                }
+                                setPularCandidatoId(c.id)
+                                setPularMotivo('')
+                              }}
+                              className="mt-1.5 text-xs text-amber-600 hover:text-amber-700 font-medium transition-colors"
+                            >
+                              Passar sem entrevista
+                            </button>
+                          )}
                         {rodadaPendente[c.id] && (
                           <Link
                             to={`/avaliar/${rodadaPendente[c.id].entrevistaId}`}
@@ -748,6 +879,67 @@ export default function KanbanTab({
               </Button>
             </DialogFooter>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={pularCandidato !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPularCandidatoId(null)
+            setPularMotivo('')
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Passar sem entrevista</DialogTitle>
+            <DialogDescription>
+              {pularCandidato?.name} · {proximaEtapaPular?.nome ?? 'próxima rodada'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2 space-y-3">
+            <p className="text-sm text-amber-600 bg-amber-50 rounded-md p-3">
+              Passar sem entrevista significa que a rodada atual não terá cobertura de avaliação. O
+              candidato avança direto para a próxima etapa.
+            </p>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Motivo</label>
+              <Textarea
+                value={pularMotivo}
+                onChange={(e) => setPularMotivo(e.target.value)}
+                placeholder="Ex: Candidato já conhecido, solicitado pelo cliente..."
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPularCandidatoId(null)
+                setPularMotivo('')
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={confirmarPular}
+              disabled={pularLoading || pularMotivo.trim().length < 3}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {pularLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Avançando...
+                </>
+              ) : (
+                'Confirmar'
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
