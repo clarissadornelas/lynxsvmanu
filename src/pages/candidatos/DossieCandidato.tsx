@@ -22,6 +22,7 @@ import {
   type AvaliacaoEntrevista,
   type ResultadoCobertura,
 } from '@/lib/funnel-phases'
+import { parseDiscDaRodada, consolidarDisc } from '@/lib/disc'
 
 interface RoundData {
   ent: any
@@ -153,7 +154,30 @@ export default function DossieCandidato() {
   const totalFechadas = avaliadoRounds.reduce((acc, r) => acc + r.cobertura.fechadas, 0)
   const lastRound = roundsData[roundsData.length - 1] || null
   const lastExecutiveSummary = lastRound?.executiveSummary || null
-  const lastDisc = lastRound?.discData || null
+
+  const discConsolidado = useMemo(() => {
+    const rodadas = roundsData
+      .map((rd) => {
+        let rawDisc: unknown = rd.ent.disc
+        if (typeof rawDisc === 'string') {
+          try {
+            rawDisc = JSON.parse(rawDisc)
+          } catch {
+            rawDisc = null
+          }
+        }
+        if (!rawDisc) return null
+        return parseDiscDaRodada(rawDisc, rd.rodadaNum, rd.etapaName)
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null)
+    return consolidarDisc(rodadas)
+  }, [roundsData])
+
+  const {
+    divergencias: discDivergencias,
+    rodadas: discRodadasCount,
+    selo: discSelo,
+  } = discConsolidado ?? { divergencias: [], rodadas: 0, selo: '' }
 
   if (loading) {
     return (
@@ -184,15 +208,6 @@ export default function DossieCandidato() {
 
   const toggleTranscript = (id: string) =>
     setExpandedTranscripts((prev) => ({ ...prev, [id]: !prev[id] }))
-
-  const discValues = lastDisc
-    ? [
-        { label: 'D', value: lastDisc.detalhes?.D ?? lastDisc.D ?? null },
-        { label: 'I', value: lastDisc.detalhes?.I ?? lastDisc.I ?? null },
-        { label: 'S', value: lastDisc.detalhes?.S ?? lastDisc.S ?? null },
-        { label: 'C', value: lastDisc.detalhes?.C ?? lastDisc.C ?? null },
-      ]
-    : []
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-8 animate-fade-in-up">
@@ -402,40 +417,106 @@ export default function DossieCandidato() {
         </Card>
       )}
 
-      {lastDisc && (
+      {discConsolidado && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <FileText className="w-5 h-5 text-indigo-600" />
               Leitura de estilo · DISC
               <span className="text-xs font-normal text-slate-400">(não entra na decisão)</span>
+              <Badge
+                variant="outline"
+                className="ml-auto text-xs bg-indigo-50 text-indigo-700 border-indigo-200"
+              >
+                {discSelo}
+              </Badge>
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             <div className="flex items-center gap-6">
               <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
-                <span className="text-xl font-bold text-indigo-700">
-                  {lastDisc.profile || lastDisc.perfil || '—'}
-                </span>
+                <span className="text-xl font-bold text-indigo-700">{discConsolidado.perfil}</span>
               </div>
               <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
-                {discValues.map((dv) => (
-                  <div key={dv.label} className="flex justify-between gap-2">
-                    <span className="text-slate-500">{dv.label}:</span>
-                    <span className="font-medium text-slate-700">
-                      {dv.value !== null ? `${dv.value}%` : '—'}
-                    </span>
-                  </div>
-                ))}
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-500">D:</span>
+                  <span className="font-medium text-slate-700 tabular-nums">
+                    {discConsolidado.D}%
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-500">I:</span>
+                  <span className="font-medium text-slate-700 tabular-nums">
+                    {discConsolidado.I}%
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-500">S:</span>
+                  <span className="font-medium text-slate-700 tabular-nums">
+                    {discConsolidado.S}%
+                  </span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-slate-500">C:</span>
+                  <span className="font-medium text-slate-700 tabular-nums">
+                    {discConsolidado.C}%
+                  </span>
+                </div>
               </div>
             </div>
-            {(lastDisc.confidence != null || lastDisc.confianca != null) && (
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-slate-500">confiança:</span>
-                <span className="font-medium text-slate-700">
-                  {lastDisc.confidence ?? lastDisc.confianca}
-                  {typeof (lastDisc.confidence ?? lastDisc.confianca) === 'number' ? '%' : ''}
-                </span>
+            {discDivergencias.length > 0 && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
+                <p className="text-sm font-medium text-amber-800">
+                  O estilo variou entre as rodadas
+                </p>
+                {discDivergencias.map((div, idx) => (
+                  <p key={idx} className="text-sm text-amber-700">
+                    {div.frase}
+                  </p>
+                ))}
+              </div>
+            )}
+            {discRodadasCount > 1 && (
+              <div className="space-y-2">
+                <p className="text-xs text-slate-500 uppercase tracking-wide">Por rodada</p>
+                {roundsData.map((rd) => {
+                  let rawDisc: unknown = rd.ent.disc
+                  if (typeof rawDisc === 'string') {
+                    try {
+                      rawDisc = JSON.parse(rawDisc)
+                    } catch {
+                      rawDisc = null
+                    }
+                  }
+                  if (!rawDisc) return null
+                  const parsed = parseDiscDaRodada(rawDisc, rd.rodadaNum, rd.etapaName)
+                  if (!parsed) return null
+                  return (
+                    <div key={rd.ent.id} className="flex items-center gap-2 text-sm py-1 flex-wrap">
+                      <span className="text-slate-600 flex-1 min-w-0 truncate">{rd.etapaName}</span>
+                      <span className="font-medium text-slate-700 w-10 text-center">
+                        {parsed.perfil || '—'}
+                      </span>
+                      <span className="text-slate-500 tabular-nums w-14 text-right">
+                        D: {parsed.D !== null ? `${parsed.D}%` : '—'}
+                      </span>
+                      <span className="text-slate-500 tabular-nums w-14 text-right">
+                        I: {parsed.I !== null ? `${parsed.I}%` : '—'}
+                      </span>
+                      <span className="text-slate-500 tabular-nums w-14 text-right">
+                        S: {parsed.S !== null ? `${parsed.S}%` : '—'}
+                      </span>
+                      <span className="text-slate-500 tabular-nums w-14 text-right">
+                        C: {parsed.C !== null ? `${parsed.C}%` : '—'}
+                      </span>
+                      {parsed.confianca !== null && (
+                        <span className="text-slate-400 text-xs whitespace-nowrap">
+                          confiança: {parsed.confianca}
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </CardContent>
