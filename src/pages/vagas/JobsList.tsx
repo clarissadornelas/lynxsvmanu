@@ -337,26 +337,32 @@ export default function JobsList() {
         </Link>
       </PageHeader>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="flex border-y border-slate-200">
         <button
           onClick={() => navigate('/conversas')}
-          className="text-left p-4 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 transition-colors cursor-pointer"
+          className="flex-1 py-4 px-0 pr-5 text-left border-r border-slate-200 hover:bg-slate-50/60 transition-colors"
         >
-          <p className="text-xs text-slate-500">Requerem atenção</p>
-          <p className="text-3xl font-bold text-amber-700 mt-1">{attentionTotal}</p>
-          <p className="text-xs text-amber-600 mt-1">
+          <p className="text-3xl font-semibold tabular-nums tracking-tight text-orange-600">
+            {attentionTotal}
+          </p>
+          <p className="text-xs font-medium text-slate-600 mt-1.5">Requerem atenção</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">
             {stalledConvCount} em conversa travada · {funnelInertiaCount} parados no funil
           </p>
         </button>
-        <div className="p-4 rounded-xl border border-slate-200 bg-white">
-          <p className="text-xs text-slate-500">Vagas ativas</p>
-          <p className="text-3xl font-bold text-emerald-600 mt-1">{activeJobs}</p>
-          <p className="text-xs text-slate-400 mt-1">de {jobs.length} no acervo</p>
+        <div className="flex-1 py-4 px-5 border-r border-slate-200">
+          <p className="text-3xl font-semibold tabular-nums tracking-tight text-slate-700">
+            {activeJobs}
+          </p>
+          <p className="text-xs font-medium text-slate-600 mt-1.5">Vagas ativas</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">de {jobs.length} no acervo</p>
         </div>
-        <div className="p-4 rounded-xl border border-slate-200 bg-white">
-          <p className="text-xs text-slate-500">Candidatos ativos</p>
-          <p className="text-3xl font-bold text-indigo-600 mt-1">{totalNoFunil}</p>
-          <p className="text-xs text-slate-400 mt-1">quem saiu fica fora da conta</p>
+        <div className="flex-1 py-4 px-5">
+          <p className="text-3xl font-semibold tabular-nums tracking-tight text-slate-700">
+            {totalNoFunil}
+          </p>
+          <p className="text-xs font-medium text-slate-600 mt-1.5">Candidatos ativos</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">quem saiu fica fora da conta</p>
         </div>
       </div>
 

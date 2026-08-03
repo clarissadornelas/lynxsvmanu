@@ -100,26 +100,32 @@ export default function Dashboard() {
 
       <PrecisaDeVoce />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="flex border-y border-slate-200">
         <button
-          className="flex flex-col items-start gap-1 p-5 rounded-xl border border-slate-200 bg-white text-left transition-colors hover:bg-slate-50"
+          className="flex flex-col items-start gap-1 px-0 py-4 border-r border-slate-200 text-left transition-colors hover:bg-slate-50"
           onClick={() => navigate('/vagas')}
         >
+          <span className="text-3xl font-bold text-slate-900 tabular-nums tracking-tight">
+            {kpis.vagasAbertas}
+          </span>
           <span className="text-sm text-slate-500">Vagas abertas</span>
-          <span className="text-3xl font-bold text-slate-900">{kpis.vagasAbertas}</span>
           <span className="text-xs text-slate-400">de {kpis.totalJobs} no acervo</span>
         </button>
         <button
-          className="flex flex-col items-start gap-1 p-5 rounded-xl border border-slate-200 bg-white text-left transition-colors hover:bg-slate-50"
+          className="flex flex-col items-start gap-1 px-5 py-4 border-r border-slate-200 text-left transition-colors hover:bg-slate-50"
           onClick={() => navigate('/candidatos')}
         >
+          <span className="text-3xl font-bold text-slate-900 tabular-nums tracking-tight">
+            {kpis.ativos}
+          </span>
           <span className="text-sm text-slate-500">Candidatos ativos no funil</span>
-          <span className="text-3xl font-bold text-slate-900">{kpis.ativos}</span>
           <span className="text-xs text-slate-400">quem saiu fica fora da conta</span>
         </button>
-        <div className="flex flex-col items-start gap-1 p-5 rounded-xl border border-slate-200 bg-white">
+        <div className="flex flex-col items-start gap-1 px-5 py-4">
+          <span className="text-3xl font-bold text-amber-600 tabular-nums tracking-tight">
+            {kpis.contratados}
+          </span>
           <span className="text-sm text-slate-500">Contratados</span>
-          <span className="text-3xl font-bold text-amber-600">{kpis.contratados}</span>
           <span className="text-xs text-slate-400">fecharam vaga</span>
         </div>
       </div>

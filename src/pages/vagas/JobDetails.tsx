@@ -3,8 +3,22 @@ import useRecruitmentStore from '@/stores/useRecruitmentStore'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import EditorRodadas from '@/components/vaga/EditorRodadas'
 import { parseEtapas, deriveKanbanColumn } from '@/lib/funnel-phases'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { CvIngest } from '@/components/CvIngest'
+import { JobAvailabilitySection } from '@/components/job-availability/JobAvailabilitySection'
+import { useJobOperations } from '@/hooks/use-job-operations'
+import { toast } from 'sonner'
+import { ChevronLeft, Loader2, Save } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import RankingTab from './components/RankingTab'
 import ShortlistTab from './components/ShortlistTab'
@@ -16,11 +30,42 @@ export default function JobDetails() {
   const { jobs, candidates, reload } = useRecruitmentStore()
   const initialTab = searchParams.get('tab') === 'decisao' ? 'decisao' : 'kanban'
 
+  const { updateJob, loading: salvandoVaga } = useJobOperations()
   const job = jobs.find((j) => j.id === id)
   const jobCandidates = candidates.filter((c) => c.jobId === id && c.status !== 'inativo')
 
+  const [form, setForm] = useState({
+    titulo: '',
+    data_limite: '',
+    status: 'aberta',
+  })
+  const [formIniciado, setFormIniciado] = useState(false)
+
   if (!job) {
     return <div className="p-8 text-center text-slate-500">Vaga não encontrada.</div>
+  }
+
+  if (!formIniciado) {
+    setForm({
+      titulo: job.title || '',
+      data_limite: job.dataLimite ? job.dataLimite.slice(0, 10) : '',
+      status: job.status || 'aberta',
+    })
+    setFormIniciado(true)
+  }
+
+  const salvarDadosDaVaga = async () => {
+    const { error } = await updateJob(job.id, {
+      titulo: form.titulo,
+      data_limite: form.data_limite || null,
+      status: form.status,
+    })
+    if (error) {
+      toast.error('Não foi possível salvar os dados da vaga.')
+      return
+    }
+    toast.success('Dados da vaga salvos.')
+    reload()
   }
 
   return (
@@ -82,6 +127,51 @@ export default function JobDetails() {
             value="info"
             className="m-0 bg-white p-6 rounded-xl border border-slate-200 shadow-sm max-w-3xl"
           >
+            <h3 className="font-semibold text-lg mb-4">Dados da vaga</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <div className="space-y-1.5">
+                <Label htmlFor="vaga-titulo">Título</Label>
+                <Input
+                  id="vaga-titulo"
+                  value={form.titulo}
+                  onChange={(e) => setForm({ ...form, titulo: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="vaga-prazo">Prazo</Label>
+                <Input
+                  id="vaga-prazo"
+                  type="date"
+                  value={form.data_limite}
+                  onChange={(e) => setForm({ ...form, data_limite: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="vaga-status">Status</Label>
+                <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                  <SelectTrigger id="vaga-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="aberta">Aberta</SelectItem>
+                    <SelectItem value="pausada">Pausada</SelectItem>
+                    <SelectItem value="fechada">Fechada</SelectItem>
+                    <SelectItem value="arquivada">Arquivada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex justify-end mb-6">
+              <Button onClick={salvarDadosDaVaga} disabled={salvandoVaga} size="sm">
+                {salvandoVaga ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                Salvar dados da vaga
+              </Button>
+            </div>
+
             <h3 className="font-semibold text-lg mb-4">Requisitos mapeados pela IA</h3>
             <div className="whitespace-pre-wrap text-sm text-slate-600 font-mono bg-slate-50 p-4 rounded-lg border border-slate-100">
               {job.requirements}
@@ -112,6 +202,28 @@ export default function JobDetails() {
                   return acc
                 }, {})}
               />
+            </div>
+
+            <div className="border-t border-slate-200 mt-6 pt-6">
+              <h3 className="font-semibold text-lg mb-1">Disponibilidade para entrevistas</h3>
+              <p className="text-sm text-slate-500 mb-4">
+                Janela de horários, máximo por dia e data limite desta vaga.
+              </p>
+              <JobAvailabilitySection
+                jobId={job.id}
+                initialJanela={job.janela}
+                initialMaxAgendamentos={job.maxAgendamentos}
+                initialDataLimite={job.dataLimite}
+                onSaved={reload}
+              />
+            </div>
+
+            <div className="border-t border-slate-200 mt-6 pt-6 pb-8">
+              <h3 className="font-semibold text-lg mb-1">Adicionar candidatos via CV</h3>
+              <p className="text-sm text-slate-500 mb-4">
+                Pode ser feito a qualquer momento enquanto a vaga estiver aberta.
+              </p>
+              <CvIngest vagaId={job.id} tenantId={job.tenantId} onDone={reload} />
             </div>
           </TabsContent>
         </div>
