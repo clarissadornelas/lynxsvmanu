@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Search, Loader2, CheckCircle2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { Progress } from '@/components/ui/progress'
 import { toast as sonnerToast } from 'sonner'
@@ -47,8 +47,7 @@ export default function JobSetup() {
     salarioMoeda: 'BRL',
     salarioNaoDeclarado: false,
   })
-  const [isResearching, setIsResearching] = useState(false)
-  const [researchDone, setResearchDone] = useState(false)
+
   const [isProcessing, setIsProcessing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [step, setStep] = useState<1 | 2>(1)
@@ -92,32 +91,6 @@ export default function JobSetup() {
       buscarEtapas(novaVagaId)
     }
   }, [step, novaVagaId, etapasNovaVaga])
-
-  const handleResearch = () => {
-    if (!formData.company) {
-      toast({
-        title: 'Aviso',
-        description: 'Digite o nome da empresa primeiro.',
-        variant: 'destructive',
-      })
-      return
-    }
-    setIsResearching(true)
-    setTimeout(() => {
-      setFormData((prev) => ({
-        ...prev,
-        requirements:
-          prev.requirements +
-          '\n\n[Cultura da Empresa Extraída]: Foco em inovação, ambiente ágil (Scrum), valoriza autonomia e perfil hands-on.',
-      }))
-      setIsResearching(false)
-      setResearchDone(true)
-      toast({
-        title: 'Cultura mapeada!',
-        description: 'Valores da empresa adicionados aos requisitos.',
-      })
-    }, 2000)
-  }
 
   const handleSubmit = async () => {
     if (!formData.title || !formData.company || !formData.tenantId) {
@@ -349,30 +322,12 @@ export default function JobSetup() {
 
             <div className="space-y-2">
               <Label htmlFor="company">Empresa</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="company"
-                  placeholder="Nome da empresa contratante"
-                  value={formData.company}
-                  onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                />
-                <Button
-                  type="button"
-                  variant={researchDone ? 'outline' : 'secondary'}
-                  onClick={handleResearch}
-                  disabled={isResearching}
-                  className="shrink-0"
-                >
-                  {isResearching ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : researchDone ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  ) : (
-                    <Search className="w-4 h-4 mr-2" />
-                  )}
-                  {researchDone ? 'Cultural Mapeada' : 'Pesquisar Cultura'}
-                </Button>
-              </div>
+              <Input
+                id="company"
+                placeholder="Nome da empresa contratante"
+                value={formData.company}
+                onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+              />
             </div>
 
             <div className="space-y-2">
